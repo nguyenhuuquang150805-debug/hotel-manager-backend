@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.nguyenhuuquang.hotelmanagement.dto.BookingDTO;
@@ -50,10 +51,29 @@ public class BookingController {
         return ResponseEntity.ok(bookingService.getActiveBookings());
     }
 
+    @GetMapping("/status")
+    public ResponseEntity<List<BookingDTO>> getBookingsByStatus(@RequestParam String status) {
+        return ResponseEntity.ok(bookingService.getBookingsByStatus(status));
+    }
+
+    @PutMapping("/{id}/confirm")
+    public ResponseEntity<BookingDTO> confirmBooking(@PathVariable Long id) {
+        return ResponseEntity.ok(bookingService.confirmBooking(id));
+    }
+
+    @PutMapping("/{id}/checkin")
+    public ResponseEntity<BookingDTO> checkIn(@PathVariable Long id) {
+        return ResponseEntity.ok(bookingService.checkIn(id));
+    }
+
     @PutMapping("/{id}/checkout")
-    public ResponseEntity<Void> checkOut(@PathVariable Long id) {
-        bookingService.checkOut(id);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<BookingDTO> checkOut(@PathVariable Long id) {
+        return ResponseEntity.ok(bookingService.checkOut(id));
+    }
+
+    @PutMapping("/{id}/complete")
+    public ResponseEntity<BookingDTO> completeBooking(@PathVariable Long id) {
+        return ResponseEntity.ok(bookingService.completeBooking(id));
     }
 
     @PutMapping("/{id}/cancel")

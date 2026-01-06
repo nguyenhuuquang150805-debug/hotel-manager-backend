@@ -22,12 +22,15 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     List<Booking> findByPhone(String phone);
 
-    @Query("SELECT b FROM Booking b WHERE b.checkIn = :date AND b.status = :status")
-    List<Booking> findByCheckInDateAndStatus(@Param("date") LocalDate date, @Param("status") BookingStatus status);
+    @Query("SELECT b FROM Booking b WHERE b.checkIn = :date AND b.status IN ('CONFIRMED', 'CHECKED_IN')")
+    List<Booking> findByCheckInDateAndActiveStatus(@Param("date") LocalDate date);
 
-    @Query("SELECT COUNT(b) FROM Booking b WHERE b.checkIn = :date AND b.status = 'ACTIVE'")
+    @Query("SELECT COUNT(b) FROM Booking b WHERE b.checkIn = :date AND b.status = 'CHECKED_IN'")
     Long countTodayActiveBookings(@Param("date") LocalDate date);
 
     @Query("SELECT b FROM Booking b WHERE b.checkOut BETWEEN :startDate AND :endDate")
     List<Booking> findByCheckOutBetween(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
+    @Query("SELECT COUNT(b) FROM Booking b WHERE b.status = 'CHECKED_IN'")
+    Long countCheckedInBookings();
 }

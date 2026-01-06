@@ -9,13 +9,21 @@ import com.nguyenhuuquang.hotelmanagement.dto.DashboardStatsDTO;
 public interface BookingService {
     BookingDTO createBooking(CreateBookingRequest request);
 
-    void checkOut(Long bookingId);
+    BookingDTO confirmBooking(Long bookingId);
+
+    BookingDTO checkIn(Long bookingId);
+
+    BookingDTO checkOut(Long bookingId);
+
+    BookingDTO completeBooking(Long bookingId);
 
     void cancelBooking(Long bookingId);
 
     List<BookingDTO> getActiveBookings();
 
     List<BookingDTO> getAllBookings();
+
+    List<BookingDTO> getBookingsByStatus(String status);
 
     BookingDTO getBookingById(Long id);
 
