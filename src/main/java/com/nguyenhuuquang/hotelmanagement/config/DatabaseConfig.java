@@ -15,7 +15,28 @@ public class DatabaseConfig {
         String username = System.getenv("PGUSER");
         String password = System.getenv("PGPASSWORD");
 
-        if (databaseUrl != null && databaseUrl.startsWith("postgresql://")) {
+        if (databaseUrl != null && databaseUrl.contains("@")) {
+            try {
+                String urlWithoutProtocol = databaseUrl.substring(databaseUrl.indexOf("://") + 3);
+
+                if (urlWithoutProtocol.contains("@")) {
+                    String[] parts = urlWithoutProtocol.split("@");
+                    String credentialsPart = parts[0];
+                    String hostPart = parts[1];
+
+                    if (username == null && credentialsPart.contains(":")) {
+                        String[] credentials = credentialsPart.split(":", 2);
+                        username = credentials[0];
+                        password = credentials[1];
+                    }
+
+                    databaseUrl = "jdbc:postgresql://" + hostPart;
+                }
+            } catch (Exception e) {
+                System.err.println("Error parsing DATABASE_URL: " + e.getMessage());
+                e.printStackTrace();
+            }
+        } else if (databaseUrl != null && databaseUrl.startsWith("postgresql://")) {
             databaseUrl = "jdbc:" + databaseUrl;
         }
 
@@ -28,6 +49,7 @@ public class DatabaseConfig {
         System.out.println("=== Database Connection Info ===");
         System.out.println("URL: " + databaseUrl);
         System.out.println("Username: " + username);
+        System.out.println("Password: " + (password != null ? "***" : "null"));
         System.out.println("================================");
 
         return DataSourceBuilder.create()
