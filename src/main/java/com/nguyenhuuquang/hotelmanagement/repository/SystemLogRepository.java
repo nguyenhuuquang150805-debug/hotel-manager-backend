@@ -13,7 +13,7 @@ import com.nguyenhuuquang.hotelmanagement.entity.enums.LogType;
 public interface SystemLogRepository extends JpaRepository<SystemLog, Long> {
     List<SystemLog> findByType(LogType type);
 
-    List<SystemLog> findByUser(String user);
+    List<SystemLog> findByUsername(String username);
 
     List<SystemLog> findByTimestampBetween(LocalDateTime startTime, LocalDateTime endTime);
 }

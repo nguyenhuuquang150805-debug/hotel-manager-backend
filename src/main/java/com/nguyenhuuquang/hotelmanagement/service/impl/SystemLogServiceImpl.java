@@ -24,17 +24,17 @@ public class SystemLogServiceImpl implements SystemLogService {
 
     @Override
     @Transactional
-    public void log(LogType type, String action, String user, String description) {
-        log(type, action, user, description, null);
+    public void log(LogType type, String action, String username, String description) {
+        log(type, action, username, description, null);
     }
 
     @Override
     @Transactional
-    public void log(LogType type, String action, String user, String description, String details) {
+    public void log(LogType type, String action, String username, String description, String details) {
         SystemLog log = SystemLog.builder()
                 .type(type)
                 .action(action)
-                .user(user)
+                .username(username)
                 .description(description)
                 .details(details)
                 .build();
@@ -59,8 +59,8 @@ public class SystemLogServiceImpl implements SystemLogService {
     }
 
     @Override
-    public List<SystemLogDTO> getLogsByUser(String user) {
-        return logRepo.findByUser(user)
+    public List<SystemLogDTO> getLogsByUser(String username) {
+        return logRepo.findByUsername(username)
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
@@ -82,7 +82,7 @@ public class SystemLogServiceImpl implements SystemLogService {
                 .id(log.getId())
                 .type(log.getType().name())
                 .action(log.getAction())
-                .user(log.getUser())
+                .user(log.getUsername())
                 .description(log.getDescription())
                 .details(log.getDetails())
                 .timestamp(log.getTimestamp())

@@ -38,7 +38,7 @@ public class SystemLog {
     private String action;
 
     @Column(nullable = false)
-    private String user;
+    private String username;
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String description;
