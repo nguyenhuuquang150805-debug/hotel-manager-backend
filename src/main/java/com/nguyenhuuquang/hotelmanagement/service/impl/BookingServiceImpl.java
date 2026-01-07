@@ -32,7 +32,6 @@ public class BookingServiceImpl implements BookingService {
         private final RoomRepository roomRepo;
         private final SystemLogService logService;
 
-        // test commit
         @Override
         @Transactional
         public BookingDTO createBooking(CreateBookingRequest request) {
@@ -57,14 +56,14 @@ public class BookingServiceImpl implements BookingService {
                                 .nights((int) nights)
                                 .totalAmount(room.getPrice().multiply(java.math.BigDecimal.valueOf(nights)))
                                 .deposit(request.getDeposit())
-                                .status(BookingStatus.CONFIRMED)
+                                .status(BookingStatus.PENDING) // ← Đổi thành PENDING
                                 .notes(request.getNotes())
                                 .build();
 
                 booking = bookingRepo.save(booking);
 
                 // Phòng chuyển sang trạng thái chờ xác nhận
-                room.setStatus(RoomStatus.OCCUPIED);
+                room.setStatus(RoomStatus.WAITING); // ← Đổi thành WAITING
                 roomRepo.save(room);
 
                 logService.log(LogType.SUCCESS, "Tạo đặt phòng", "Admin",
@@ -89,6 +88,7 @@ public class BookingServiceImpl implements BookingService {
                 booking.setStatus(BookingStatus.CONFIRMED);
                 booking = bookingRepo.save(booking);
 
+                // Phòng vẫn ở trạng thái WAITING cho đến khi check-in
                 logService.log(LogType.SUCCESS, "Xác nhận đặt phòng", "Admin",
                                 String.format("Đã xác nhận đặt phòng %s cho khách %s",
                                                 booking.getRoom().getRoomNumber(), booking.getCustomerName()),
@@ -110,6 +110,7 @@ public class BookingServiceImpl implements BookingService {
                 booking.setStatus(BookingStatus.CHECKED_IN);
                 booking = bookingRepo.save(booking);
 
+                // Khi check-in, phòng chuyển sang OCCUPIED
                 Room room = booking.getRoom();
                 room.setStatus(RoomStatus.OCCUPIED);
                 roomRepo.save(room);
@@ -203,8 +204,18 @@ public class BookingServiceImpl implements BookingService {
 
         @Override
         public List<BookingDTO> getActiveBookings() {
-                return bookingRepo.findByStatus(BookingStatus.CHECKED_IN)
-                                .stream()
+                // Lấy tất cả booking đang hoạt động (PENDING, CONFIRMED, CHECKED_IN)
+                List<Booking> pendingBookings = bookingRepo.findByStatus(BookingStatus.PENDING);
+                List<Booking> confirmedBookings = bookingRepo.findByStatus(BookingStatus.CONFIRMED);
+                List<Booking> checkedInBookings = bookingRepo.findByStatus(BookingStatus.CHECKED_IN);
+
+                // Merge tất cả lại
+                List<Booking> allActiveBookings = new java.util.ArrayList<>();
+                allActiveBookings.addAll(pendingBookings);
+                allActiveBookings.addAll(confirmedBookings);
+                allActiveBookings.addAll(checkedInBookings);
+
+                return allActiveBookings.stream()
                                 .map(this::convertToDTO)
                                 .collect(Collectors.toList());
         }
