@@ -57,14 +57,14 @@ public class BookingServiceImpl implements BookingService {
                                 .nights((int) nights)
                                 .totalAmount(room.getPrice().multiply(java.math.BigDecimal.valueOf(nights)))
                                 .deposit(request.getDeposit())
-                                .status(BookingStatus.PENDING)
+                                .status(BookingStatus.CONFIRMED)
                                 .notes(request.getNotes())
                                 .build();
 
                 booking = bookingRepo.save(booking);
 
                 // Phòng chuyển sang trạng thái chờ xác nhận
-                room.setStatus(RoomStatus.WAITING);
+                room.setStatus(RoomStatus.OCCUPIED);
                 roomRepo.save(room);
 
                 logService.log(LogType.SUCCESS, "Tạo đặt phòng", "Admin",
