@@ -32,6 +32,7 @@ public class BookingServiceImpl implements BookingService {
         private final RoomRepository roomRepo;
         private final SystemLogService logService;
 
+        // test commit
         @Override
         @Transactional
         public BookingDTO createBooking(CreateBookingRequest request) {
