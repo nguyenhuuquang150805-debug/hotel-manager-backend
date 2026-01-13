@@ -31,9 +31,9 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(name = "bookings")
 @Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class Booking {
 
     @Id
@@ -47,16 +47,16 @@ public class Booking {
     @Column(name = "customer_name", nullable = false)
     private String customerName;
 
-    @Column(nullable = false, length = 20)
+    @Column(name = "phone", nullable = false)
     private String phone;
 
-    @Column(length = 100)
+    @Column(name = "email")
     private String email;
 
-    @Column(name = "id_number", length = 20)
+    @Column(name = "id_number")
     private String idNumber;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(name = "address")
     private String address;
 
     @Column(name = "check_in", nullable = false)
@@ -65,83 +65,78 @@ public class Booking {
     @Column(name = "check_out", nullable = false)
     private LocalDate checkOut;
 
-    @Column(name = "actual_check_in")
-    private LocalDateTime actualCheckIn;
-
-    @Column(name = "actual_check_out")
-    private LocalDateTime actualCheckOut;
-
-    @Column(nullable = false)
+    @Column(name = "nights", nullable = false)
     private Integer nights;
 
     @Column(name = "number_of_guests")
     private Integer numberOfGuests;
 
-    @Column(name = "room_amount", nullable = false, precision = 10, scale = 2)
+    @Column(name = "room_amount", nullable = false)
     private BigDecimal roomAmount;
 
-    @Column(name = "service_amount", precision = 10, scale = 2)
+    @Column(name = "service_amount")
     private BigDecimal serviceAmount;
 
-    @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
+    @Column(name = "total_amount", nullable = false)
     private BigDecimal totalAmount;
 
-    @Column(name = "paid_amount", precision = 10, scale = 2)
-    private BigDecimal paidAmount;
-
-    @Column(precision = 10, scale = 2)
+    @Column(name = "deposit")
     private BigDecimal deposit;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private BookingStatus status;
+    @Column(name = "paid_amount")
+    private BigDecimal paidAmount;
 
-    @Column(columnDefinition = "TEXT")
-    private String notes;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false)
+    private BookingStatus status;
 
     @Column(name = "special_requests", columnDefinition = "TEXT")
     private String specialRequests;
 
-    @Column(name = "cancellation_reason", columnDefinition = "TEXT")
+    @Column(name = "notes", columnDefinition = "TEXT")
+    private String notes;
+
+    @Column(name = "actual_check_in")
+    private LocalDate actualCheckIn;
+
+    @Column(name = "actual_check_out")
+    private LocalDate actualCheckOut;
+
+    @Column(name = "cancellation_reason")
     private String cancellationReason;
 
     @Column(name = "cancelled_at")
     private LocalDateTime cancelledAt;
 
-    // Quan hệ với các dịch vụ được sử dụng
-    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<BookingService> bookingServices = new ArrayList<>();
-
-    // Quan hệ với các khoản thanh toán
-    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<Payment> payments = new ArrayList<>();
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "created_by")
-    private User createdBy;
-
-    @Column(name = "created_at")
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "created_by")
+    private String createdBy;
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<BookingService> bookingServices = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
 
-        // Khởi tạo các giá trị mặc định
-        if (serviceAmount == null) {
-            serviceAmount = BigDecimal.ZERO;
+        if (deposit == null) {
+            deposit = BigDecimal.ZERO;
         }
         if (paidAmount == null) {
             paidAmount = BigDecimal.ZERO;
         }
-        if (deposit == null) {
-            deposit = BigDecimal.ZERO;
+        if (serviceAmount == null) {
+            serviceAmount = BigDecimal.ZERO;
+        }
+        if (numberOfGuests == null) {
+            numberOfGuests = 1;
         }
     }
 
@@ -150,7 +145,19 @@ public class Booking {
         updatedAt = LocalDateTime.now();
     }
 
-    // Helper methods
+    public void recalculateTotalAmount() {
+        BigDecimal calculatedServiceAmount = BigDecimal.ZERO;
+        if (bookingServices != null && !bookingServices.isEmpty()) {
+            calculatedServiceAmount = bookingServices.stream()
+                    .map(BookingService::getTotalPrice)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
+
+        this.serviceAmount = calculatedServiceAmount;
+
+        this.totalAmount = this.roomAmount.add(this.serviceAmount);
+    }
+
     public void addBookingService(BookingService bookingService) {
         bookingServices.add(bookingService);
         bookingService.setBooking(this);
@@ -161,34 +168,5 @@ public class Booking {
         bookingServices.remove(bookingService);
         bookingService.setBooking(null);
         recalculateTotalAmount();
-    }
-
-    public void addPayment(Payment payment) {
-        payments.add(payment);
-        payment.setBooking(this);
-        recalculatePaidAmount();
-    }
-
-    public void recalculateTotalAmount() {
-        serviceAmount = bookingServices.stream()
-                .map(BookingService::getTotalPrice)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-
-        totalAmount = roomAmount.add(serviceAmount);
-    }
-
-    public void recalculatePaidAmount() {
-        paidAmount = payments.stream()
-                .filter(p -> p.getStatus() == com.nguyenhuuquang.hotelmanagement.entity.enums.PaymentStatus.COMPLETED)
-                .map(Payment::getAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
-    public BigDecimal getRemainingAmount() {
-        return totalAmount.subtract(paidAmount);
-    }
-
-    public boolean isFullyPaid() {
-        return paidAmount.compareTo(totalAmount) >= 0;
     }
 }

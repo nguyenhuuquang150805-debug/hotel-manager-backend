@@ -1,7 +1,10 @@
 package com.nguyenhuuquang.hotelmanagement.service.impl;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -47,6 +50,12 @@ public class BookingServiceImpl implements BookingService {
                         throw new IllegalArgumentException("Ngày trả phòng phải sau ngày nhận phòng");
                 }
 
+                // Tính toán các giá trị
+                BigDecimal roomAmount = room.getPrice().multiply(BigDecimal.valueOf(nights));
+                BigDecimal serviceAmount = BigDecimal.ZERO;
+                BigDecimal totalAmount = roomAmount.add(serviceAmount);
+                BigDecimal deposit = request.getDeposit() != null ? request.getDeposit() : BigDecimal.ZERO;
+
                 Booking booking = Booking.builder()
                                 .room(room)
                                 .customerName(request.getCustomerName())
@@ -54,10 +63,15 @@ public class BookingServiceImpl implements BookingService {
                                 .checkIn(request.getCheckIn())
                                 .checkOut(request.getCheckOut())
                                 .nights((int) nights)
-                                .totalAmount(room.getPrice().multiply(java.math.BigDecimal.valueOf(nights)))
-                                .deposit(request.getDeposit())
+                                .numberOfGuests(1) // Default value
+                                .roomAmount(roomAmount)
+                                .serviceAmount(serviceAmount)
+                                .totalAmount(totalAmount)
+                                .deposit(deposit)
+                                .paidAmount(BigDecimal.ZERO)
                                 .status(BookingStatus.PENDING)
                                 .notes(request.getNotes())
+                                .createdBy("Admin")
                                 .build();
 
                 booking = bookingRepo.save(booking);
@@ -68,8 +82,8 @@ public class BookingServiceImpl implements BookingService {
                 logService.log(LogType.SUCCESS, "Tạo đặt phòng", "Admin",
                                 String.format("Đã tạo đặt phòng %s cho khách %s", room.getRoomNumber(),
                                                 request.getCustomerName()),
-                                String.format("Phòng %s, %d đêm, tổng tiền %s, trạng thái: Chờ xác nhận",
-                                                room.getRoomNumber(), nights, booking.getTotalAmount()));
+                                String.format("Phòng %s, %d đêm, tiền phòng %s, tổng tiền %s, trạng thái: Chờ xác nhận",
+                                                room.getRoomNumber(), nights, roomAmount, totalAmount));
 
                 return convertToDTO(booking);
         }
@@ -106,6 +120,7 @@ public class BookingServiceImpl implements BookingService {
                 }
 
                 booking.setStatus(BookingStatus.CHECKED_IN);
+                booking.setActualCheckIn(LocalDate.now());
                 booking = bookingRepo.save(booking);
 
                 Room room = booking.getRoom();
@@ -131,6 +146,7 @@ public class BookingServiceImpl implements BookingService {
                 }
 
                 booking.setStatus(BookingStatus.CHECKED_OUT);
+                booking.setActualCheckOut(LocalDate.now());
                 booking = bookingRepo.save(booking);
 
                 Room room = booking.getRoom();
@@ -187,6 +203,7 @@ public class BookingServiceImpl implements BookingService {
 
                 BookingStatus oldStatus = booking.getStatus();
                 booking.setStatus(BookingStatus.CANCELLED);
+                booking.setCancelledAt(LocalDateTime.now());
                 bookingRepo.save(booking);
 
                 Room room = booking.getRoom();
@@ -210,6 +227,7 @@ public class BookingServiceImpl implements BookingService {
                 }
 
                 booking.setStatus(BookingStatus.NO_SHOW);
+                booking.setCancelledAt(LocalDateTime.now());
                 bookingRepo.save(booking);
 
                 Room room = booking.getRoom();
@@ -228,7 +246,7 @@ public class BookingServiceImpl implements BookingService {
                 List<Booking> confirmedBookings = bookingRepo.findByStatus(BookingStatus.CONFIRMED);
                 List<Booking> checkedInBookings = bookingRepo.findByStatus(BookingStatus.CHECKED_IN);
 
-                List<Booking> allActiveBookings = new java.util.ArrayList<>();
+                List<Booking> allActiveBookings = new ArrayList<>();
                 allActiveBookings.addAll(pendingBookings);
                 allActiveBookings.addAll(confirmedBookings);
                 allActiveBookings.addAll(checkedInBookings);
