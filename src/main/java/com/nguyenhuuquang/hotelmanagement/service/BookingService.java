@@ -30,4 +30,6 @@ public interface BookingService {
     BookingDTO getBookingById(Long id);
 
     DashboardStatsDTO getBookingStats();
+
+    BookingDTO addServiceToBooking(Long bookingId, Long serviceId, Integer quantity);
 }

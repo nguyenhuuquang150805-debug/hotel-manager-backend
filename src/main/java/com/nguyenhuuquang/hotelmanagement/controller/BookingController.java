@@ -36,6 +36,14 @@ public class BookingController {
         return ResponseEntity.status(HttpStatus.CREATED).body(booking);
     }
 
+    @PostMapping("/{id}/services")
+    public ResponseEntity<BookingDTO> addService(
+            @PathVariable Long id,
+            @RequestParam Long serviceId,
+            @RequestParam Integer quantity) {
+        return ResponseEntity.ok(bookingService.addServiceToBooking(id, serviceId, quantity));
+    }
+
     @GetMapping
     public ResponseEntity<List<BookingDTO>> getAllBookings() {
         return ResponseEntity.ok(bookingService.getAllBookings());
@@ -92,4 +100,5 @@ public class BookingController {
     public ResponseEntity<DashboardStatsDTO> getBookingStats() {
         return ResponseEntity.ok(bookingService.getBookingStats());
     }
+
 }

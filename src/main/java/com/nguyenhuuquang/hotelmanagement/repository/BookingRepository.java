@@ -33,4 +33,21 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
     @Query("SELECT COUNT(b) FROM Booking b WHERE b.status = 'CHECKED_IN'")
     Long countCheckedInBookings();
+
+    @Query("SELECT b FROM Booking b WHERE b.room.id = :roomId " +
+            "AND b.status NOT IN (com.nguyenhuuquang.hotelmanagement.entity.enums.BookingStatus.CANCELLED, " +
+            "com.nguyenhuuquang.hotelmanagement.entity.enums.BookingStatus.NO_SHOW) " +
+            "AND (b.checkIn < :checkOut AND b.checkOut > :checkIn)")
+    List<Booking> findOverlappingBookings(@Param("roomId") Long roomId,
+            @Param("checkIn") LocalDate checkIn,
+            @Param("checkOut") LocalDate checkOut);
+
+    @Query("SELECT b FROM Booking b WHERE b.room.id = :roomId " +
+            "AND b.status NOT IN (com.nguyenhuuquang.hotelmanagement.entity.enums.BookingStatus.CANCELLED, " +
+            "com.nguyenhuuquang.hotelmanagement.entity.enums.BookingStatus.NO_SHOW)")
+    List<Booking> findAllBookedDatesByRoom(@Param("roomId") Long roomId);
+
+    @Query("SELECT b FROM Booking b WHERE b.room.id = :roomId " +
+            "AND b.status NOT IN ('CANCELLED', 'NO_SHOW')")
+    List<Booking> findActiveBookingsByRoom(@Param("roomId") Long roomId);
 }

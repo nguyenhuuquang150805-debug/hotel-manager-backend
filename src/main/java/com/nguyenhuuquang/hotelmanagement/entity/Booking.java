@@ -158,10 +158,11 @@ public class Booking {
         this.totalAmount = this.roomAmount.add(this.serviceAmount);
     }
 
-    public void addBookingService(BookingService bookingService) {
-        bookingServices.add(bookingService);
-        bookingService.setBooking(this);
-        recalculateTotalAmount();
+    public void addBookingService(BookingService bs) {
+        if (this.bookingServices == null)
+            this.bookingServices = new ArrayList<>();
+        this.bookingServices.add(bs);
+        bs.setBooking(this);
     }
 
     public void removeBookingService(BookingService bookingService) {

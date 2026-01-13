@@ -22,10 +22,6 @@ import com.nguyenhuuquang.hotelmanagement.service.RoomServiceManager;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
-/**
- * Controller quản lý dịch vụ phòng
- * Endpoint: /api/room-services (tránh trùng với /api/bookings)
- */
 @RestController
 @RequestMapping("/api/room-services")
 @RequiredArgsConstructor

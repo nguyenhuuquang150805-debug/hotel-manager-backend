@@ -22,6 +22,7 @@ import com.nguyenhuuquang.hotelmanagement.entity.enums.RoomStatus;
 import com.nguyenhuuquang.hotelmanagement.exception.ResourceNotFoundException;
 import com.nguyenhuuquang.hotelmanagement.repository.BookingRepository;
 import com.nguyenhuuquang.hotelmanagement.repository.RoomRepository;
+import com.nguyenhuuquang.hotelmanagement.repository.ServiceRepository;
 import com.nguyenhuuquang.hotelmanagement.service.BookingService;
 import com.nguyenhuuquang.hotelmanagement.service.SystemLogService;
 
@@ -34,12 +35,27 @@ public class BookingServiceImpl implements BookingService {
         private final BookingRepository bookingRepo;
         private final RoomRepository roomRepo;
         private final SystemLogService logService;
+        private final ServiceRepository serviceRepo;
 
         @Override
         @Transactional
         public BookingDTO createBooking(CreateBookingRequest request) {
                 Room room = roomRepo.findById(request.getRoomId())
                                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phòng"));
+
+                List<Booking> overlapping = bookingRepo.findOverlappingBookings(
+                                request.getRoomId(), request.getCheckIn(), request.getCheckOut());
+
+                if (!overlapping.isEmpty()) {
+                        throw new IllegalStateException(
+                                        "Phòng này đã được đặt hoặc đang có khách ở trong khoảng thời gian từ "
+                                                        + request.getCheckIn() + " đến " + request.getCheckOut());
+                }
+                // -------------------------------------
+
+                if (room.getStatus() != RoomStatus.AVAILABLE) {
+                        throw new IllegalStateException("Phòng hiện tại không sẵn sàng (Đang dọn dẹp hoặc có khách)");
+                }
 
                 if (room.getStatus() != RoomStatus.AVAILABLE) {
                         throw new IllegalStateException("Phòng không khả dụng");
@@ -63,7 +79,7 @@ public class BookingServiceImpl implements BookingService {
                                 .checkIn(request.getCheckIn())
                                 .checkOut(request.getCheckOut())
                                 .nights((int) nights)
-                                .numberOfGuests(1) // Default value
+                                .numberOfGuests(1)
                                 .roomAmount(roomAmount)
                                 .serviceAmount(serviceAmount)
                                 .totalAmount(totalAmount)
@@ -84,6 +100,50 @@ public class BookingServiceImpl implements BookingService {
                                                 request.getCustomerName()),
                                 String.format("Phòng %s, %d đêm, tiền phòng %s, tổng tiền %s, trạng thái: Chờ xác nhận",
                                                 room.getRoomNumber(), nights, roomAmount, totalAmount));
+
+                return convertToDTO(booking);
+        }
+
+        @Override
+        @Transactional
+        public BookingDTO addServiceToBooking(Long bookingId, Long serviceId, Integer quantity) {
+                // 1. Tìm Booking
+                Booking booking = bookingRepo.findById(bookingId)
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Không tìm thấy đặt phòng với ID: " + bookingId));
+
+                if (booking.getStatus() == BookingStatus.COMPLETED || booking.getStatus() == BookingStatus.CANCELLED) {
+                        throw new IllegalStateException(
+                                        "Không thể thêm dịch vụ cho đặt phòng đã hoàn thành hoặc đã hủy.");
+                }
+
+                com.nguyenhuuquang.hotelmanagement.entity.Service service = serviceRepo.findById(serviceId)
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Không tìm thấy dịch vụ với ID: " + serviceId));
+
+                BigDecimal unitPrice = service.getPrice();
+                BigDecimal totalPrice = unitPrice.multiply(BigDecimal.valueOf(quantity));
+
+                com.nguyenhuuquang.hotelmanagement.entity.BookingService bs = com.nguyenhuuquang.hotelmanagement.entity.BookingService
+                                .builder()
+                                .service(service)
+                                .quantity(quantity)
+                                .unitPrice(unitPrice)
+                                .totalPrice(totalPrice)
+                                .serviceDate(LocalDateTime.now())
+                                .build();
+
+                booking.addBookingService(bs);
+
+                booking.recalculateTotalAmount();
+
+                booking = bookingRepo.save(booking);
+
+                logService.log(LogType.SUCCESS, "Thêm dịch vụ", "Admin",
+                                String.format("Đã thêm %d x %s cho phòng %s",
+                                                quantity, service.getName(), booking.getRoom().getRoomNumber()),
+                                String.format("Giá trị thêm: %s. Tổng hóa đơn mới: %s",
+                                                totalPrice, booking.getTotalAmount()));
 
                 return convertToDTO(booking);
         }
@@ -317,4 +377,5 @@ public class BookingServiceImpl implements BookingService {
                                 .createdAt(booking.getCreatedAt())
                                 .build();
         }
+
 }
