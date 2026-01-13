@@ -19,6 +19,8 @@ public interface BookingService {
 
     void cancelBooking(Long bookingId);
 
+    void markNoShow(Long bookingId);
+
     List<BookingDTO> getActiveBookings();
 
     List<BookingDTO> getAllBookings();

@@ -82,6 +82,12 @@ public class BookingController {
         return ResponseEntity.ok().build();
     }
 
+    @PutMapping("/{id}/noshow")
+    public ResponseEntity<Void> markNoShow(@PathVariable Long id) {
+        bookingService.markNoShow(id);
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/stats")
     public ResponseEntity<DashboardStatsDTO> getBookingStats() {
         return ResponseEntity.ok(bookingService.getBookingStats());

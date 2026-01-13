@@ -83,8 +83,8 @@ public class RoomServiceImpl implements RoomService {
                 Room room = roomRepo.findById(id)
                                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phòng"));
 
-                if (room.getStatus() == RoomStatus.OCCUPIED) {
-                        throw new IllegalStateException("Không thể xóa phòng đang được thuê");
+                if (room.getStatus() == RoomStatus.OCCUPIED || room.getStatus() == RoomStatus.RESERVED) {
+                        throw new IllegalStateException("Không thể xóa phòng đang được thuê hoặc đã đặt");
                 }
 
                 String roomNumber = room.getRoomNumber();

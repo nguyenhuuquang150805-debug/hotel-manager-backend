@@ -2,7 +2,9 @@ package com.nguyenhuuquang.hotelmanagement.entity.enums;
 
 public enum RoomStatus {
     AVAILABLE,
+    RESERVED,
     OCCUPIED,
-    WAITING,
-    CLEANING
+    CLEANING,
+    MAINTENANCE,
+    OUT_OF_ORDER
 }

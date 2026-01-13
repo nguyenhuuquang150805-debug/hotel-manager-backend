@@ -56,14 +56,13 @@ public class BookingServiceImpl implements BookingService {
                                 .nights((int) nights)
                                 .totalAmount(room.getPrice().multiply(java.math.BigDecimal.valueOf(nights)))
                                 .deposit(request.getDeposit())
-                                .status(BookingStatus.PENDING) // ← Đổi thành PENDING
+                                .status(BookingStatus.PENDING)
                                 .notes(request.getNotes())
                                 .build();
 
                 booking = bookingRepo.save(booking);
 
-                // Phòng chuyển sang trạng thái chờ xác nhận
-                room.setStatus(RoomStatus.WAITING); // ← Đổi thành WAITING
+                room.setStatus(RoomStatus.RESERVED);
                 roomRepo.save(room);
 
                 logService.log(LogType.SUCCESS, "Tạo đặt phòng", "Admin",
@@ -88,7 +87,6 @@ public class BookingServiceImpl implements BookingService {
                 booking.setStatus(BookingStatus.CONFIRMED);
                 booking = bookingRepo.save(booking);
 
-                // Phòng vẫn ở trạng thái WAITING cho đến khi check-in
                 logService.log(LogType.SUCCESS, "Xác nhận đặt phòng", "Admin",
                                 String.format("Đã xác nhận đặt phòng %s cho khách %s",
                                                 booking.getRoom().getRoomNumber(), booking.getCustomerName()),
@@ -110,15 +108,14 @@ public class BookingServiceImpl implements BookingService {
                 booking.setStatus(BookingStatus.CHECKED_IN);
                 booking = bookingRepo.save(booking);
 
-                // Khi check-in, phòng chuyển sang OCCUPIED
                 Room room = booking.getRoom();
                 room.setStatus(RoomStatus.OCCUPIED);
                 roomRepo.save(room);
 
                 logService.log(LogType.SUCCESS, "Nhận phòng", "Admin",
-                                String.format("Khách %s đã nhận phòng %s",
-                                                booking.getCustomerName(), room.getRoomNumber()),
-                                String.format("Check-in thành công, phòng đang được sử dụng"));
+                                String.format("Khách %s đã nhận phòng %s", booking.getCustomerName(),
+                                                room.getRoomNumber()),
+                                "Check-in thành công, phòng đang được sử dụng");
 
                 return convertToDTO(booking);
         }
@@ -141,8 +138,8 @@ public class BookingServiceImpl implements BookingService {
                 roomRepo.save(room);
 
                 logService.log(LogType.SUCCESS, "Trả phòng", "Admin",
-                                String.format("Khách %s đã trả phòng %s",
-                                                booking.getCustomerName(), room.getRoomNumber()),
+                                String.format("Khách %s đã trả phòng %s", booking.getCustomerName(),
+                                                room.getRoomNumber()),
                                 "Check-out thành công, phòng chuyển sang trạng thái dọn dẹp");
 
                 return convertToDTO(booking);
@@ -197,19 +194,40 @@ public class BookingServiceImpl implements BookingService {
                 roomRepo.save(room);
 
                 logService.log(LogType.SUCCESS, "Hủy đặt phòng", "Admin",
-                                String.format("Đã hủy đặt phòng %s (Trạng thái cũ: %s)",
-                                                room.getRoomNumber(), oldStatus),
+                                String.format("Đã hủy đặt phòng %s (Trạng thái cũ: %s)", room.getRoomNumber(),
+                                                oldStatus),
                                 "Hoàn tiền cọc cho khách, phòng trở về trạng thái sẵn sàng");
         }
 
         @Override
+        @Transactional
+        public void markNoShow(Long bookingId) {
+                Booking booking = bookingRepo.findById(bookingId)
+                                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đặt phòng"));
+
+                if (booking.getStatus() != BookingStatus.CONFIRMED) {
+                        throw new IllegalStateException("Chỉ có thể đánh dấu No-Show cho đặt phòng đã xác nhận");
+                }
+
+                booking.setStatus(BookingStatus.NO_SHOW);
+                bookingRepo.save(booking);
+
+                Room room = booking.getRoom();
+                room.setStatus(RoomStatus.AVAILABLE);
+                roomRepo.save(room);
+
+                logService.log(LogType.WARNING, "Khách không đến", "Admin",
+                                String.format("Khách %s không đến nhận phòng %s", booking.getCustomerName(),
+                                                room.getRoomNumber()),
+                                "Không hoàn tiền cọc, phòng trở về trạng thái sẵn sàng");
+        }
+
+        @Override
         public List<BookingDTO> getActiveBookings() {
-                // Lấy tất cả booking đang hoạt động (PENDING, CONFIRMED, CHECKED_IN)
                 List<Booking> pendingBookings = bookingRepo.findByStatus(BookingStatus.PENDING);
                 List<Booking> confirmedBookings = bookingRepo.findByStatus(BookingStatus.CONFIRMED);
                 List<Booking> checkedInBookings = bookingRepo.findByStatus(BookingStatus.CHECKED_IN);
 
-                // Merge tất cả lại
                 List<Booking> allActiveBookings = new java.util.ArrayList<>();
                 allActiveBookings.addAll(pendingBookings);
                 allActiveBookings.addAll(confirmedBookings);
@@ -249,7 +267,7 @@ public class BookingServiceImpl implements BookingService {
                 LocalDate today = LocalDate.now();
                 Long todayRentals = bookingRepo.countTodayActiveBookings(today);
                 Long occupiedRooms = roomRepo.countByStatus(RoomStatus.OCCUPIED);
-                Long waitingRooms = roomRepo.countByStatus(RoomStatus.WAITING);
+                Long reservedRooms = roomRepo.countByStatus(RoomStatus.RESERVED);
                 Long cleaningRooms = roomRepo.countByStatus(RoomStatus.CLEANING);
                 Long totalRooms = roomRepo.count();
                 Long availableRooms = roomRepo.countByStatus(RoomStatus.AVAILABLE);
@@ -257,7 +275,7 @@ public class BookingServiceImpl implements BookingService {
                 return DashboardStatsDTO.builder()
                                 .todayRentals(todayRentals)
                                 .occupiedRooms(occupiedRooms)
-                                .waitingRooms(waitingRooms)
+                                .waitingRooms(reservedRooms)
                                 .cleaningRooms(cleaningRooms)
                                 .totalRooms(totalRooms)
                                 .availableRooms(availableRooms)
