@@ -71,7 +71,7 @@ public class BookingServiceImpl implements BookingService {
                                 .paidAmount(BigDecimal.ZERO)
                                 .status(BookingStatus.PENDING)
                                 .notes(request.getNotes())
-                                .createdBy("Admin")
+                                .createdBy(1L)
                                 .build();
 
                 booking = bookingRepo.save(booking);

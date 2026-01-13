@@ -112,7 +112,7 @@ public class Booking {
     private LocalDateTime createdAt;
 
     @Column(name = "created_by")
-    private String createdBy;
+    private Long createdBy;
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
