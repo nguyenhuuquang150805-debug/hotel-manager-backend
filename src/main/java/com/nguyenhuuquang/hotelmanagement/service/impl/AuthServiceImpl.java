@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import com.nguyenhuuquang.hotelmanagement.config.JwtUtil;
 import com.nguyenhuuquang.hotelmanagement.dto.AuthResponse;
+import com.nguyenhuuquang.hotelmanagement.dto.ChangePasswordRequest;
 import com.nguyenhuuquang.hotelmanagement.dto.LoginRequest;
 import com.nguyenhuuquang.hotelmanagement.dto.RegisterRequest;
 import com.nguyenhuuquang.hotelmanagement.entity.User;
@@ -80,5 +81,31 @@ public class AuthServiceImpl implements AuthService {
                 .email(user.getEmail())
                 .role(user.getRole())
                 .build();
+    }
+
+    @Override
+    public void changePassword(ChangePasswordRequest request) {
+        log.info("Change password request for email: {}", request.getEmail());
+
+        // Tìm user theo email
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> {
+                    log.error("User not found: {}", request.getEmail());
+                    return new AuthenticationException("Không tìm thấy người dùng");
+                });
+
+        // Kiểm tra mật khẩu cũ
+        boolean oldPasswordMatches = passwordEncoder.matches(request.getOldPassword(), user.getPassword());
+        if (!oldPasswordMatches) {
+            log.error("Old password mismatch for user: {}", request.getEmail());
+            throw new AuthenticationException("Mật khẩu cũ không chính xác");
+        }
+
+        // Mã hóa và lưu mật khẩu mới
+        String encodedNewPassword = passwordEncoder.encode(request.getNewPassword());
+        user.setPassword(encodedNewPassword);
+        userRepository.save(user);
+
+        log.info("Password changed successfully for user: {}", request.getEmail());
     }
 }

@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.nguyenhuuquang.hotelmanagement.dto.AuthResponse;
+import com.nguyenhuuquang.hotelmanagement.dto.ChangePasswordRequest;
 import com.nguyenhuuquang.hotelmanagement.dto.LoginRequest;
 import com.nguyenhuuquang.hotelmanagement.dto.RegisterRequest;
 import com.nguyenhuuquang.hotelmanagement.entity.User;
@@ -35,5 +36,11 @@ public class AuthController {
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         AuthResponse response = authService.login(request);
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<String> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        authService.changePassword(request);
+        return ResponseEntity.ok("Đổi mật khẩu thành công");
     }
 }
