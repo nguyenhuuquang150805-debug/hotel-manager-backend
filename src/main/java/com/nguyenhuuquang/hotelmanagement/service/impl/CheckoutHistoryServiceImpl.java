@@ -24,6 +24,8 @@ public class CheckoutHistoryServiceImpl implements CheckoutHistoryService {
     @Override
     @Transactional
     public CheckoutHistoryDTO createHistory(CheckoutHistoryDTO historyDTO) {
+        Double calculatedTotal = historyDTO.getRoomAmount() + historyDTO.getServiceAmount();
+
         CheckoutHistory history = CheckoutHistory.builder()
                 .bookingId(historyDTO.getBookingId())
                 .roomNumber(historyDTO.getRoomNumber())
@@ -35,7 +37,7 @@ public class CheckoutHistoryServiceImpl implements CheckoutHistoryService {
                 .nights(historyDTO.getNights())
                 .roomAmount(historyDTO.getRoomAmount())
                 .serviceAmount(historyDTO.getServiceAmount())
-                .totalAmount(historyDTO.getTotalAmount())
+                .totalAmount(calculatedTotal)
                 .deposit(historyDTO.getDeposit())
                 .notes(historyDTO.getNotes())
                 .build();
