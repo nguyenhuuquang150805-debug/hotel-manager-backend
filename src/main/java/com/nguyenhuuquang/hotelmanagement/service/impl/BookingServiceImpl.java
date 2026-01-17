@@ -61,10 +61,10 @@ public class BookingServiceImpl implements BookingService {
                 boolean hasCheckedInBooking = overlappingBookings.stream()
                                 .anyMatch(b -> b.getStatus() == BookingStatus.CHECKED_IN);
 
-                // ✅ 4. Tính toán các giá trị
                 BigDecimal roomAmount = room.getPrice().multiply(BigDecimal.valueOf(nights));
                 BigDecimal serviceAmount = BigDecimal.ZERO;
                 BigDecimal totalAmount = roomAmount.add(serviceAmount);
+
                 BigDecimal deposit = request.getDeposit() != null ? request.getDeposit() : BigDecimal.ZERO;
 
                 // ✅ 5. Tạo booking mới
