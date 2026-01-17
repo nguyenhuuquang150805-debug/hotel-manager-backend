@@ -3,6 +3,7 @@ package com.nguyenhuuquang.hotelmanagement.service;
 import java.util.List;
 
 import com.nguyenhuuquang.hotelmanagement.dto.BookingDTO;
+import com.nguyenhuuquang.hotelmanagement.dto.BookingWithServicesDTO;
 import com.nguyenhuuquang.hotelmanagement.dto.CreateBookingRequest;
 import com.nguyenhuuquang.hotelmanagement.dto.DashboardStatsDTO;
 
@@ -28,6 +29,8 @@ public interface BookingService {
     List<BookingDTO> getBookingsByStatus(String status);
 
     BookingDTO getBookingById(Long id);
+
+    BookingWithServicesDTO getBookingWithServices(Long id);
 
     DashboardStatsDTO getBookingStats();
 

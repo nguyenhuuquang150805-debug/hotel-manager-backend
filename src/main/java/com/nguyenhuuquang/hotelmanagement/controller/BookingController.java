@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.nguyenhuuquang.hotelmanagement.dto.BookingDTO;
+import com.nguyenhuuquang.hotelmanagement.dto.BookingWithServicesDTO;
 import com.nguyenhuuquang.hotelmanagement.dto.CreateBookingRequest;
 import com.nguyenhuuquang.hotelmanagement.dto.DashboardStatsDTO;
 import com.nguyenhuuquang.hotelmanagement.service.BookingService;
@@ -42,6 +43,11 @@ public class BookingController {
             @RequestParam Long serviceId,
             @RequestParam Integer quantity) {
         return ResponseEntity.ok(bookingService.addServiceToBooking(id, serviceId, quantity));
+    }
+
+    @GetMapping("/{id}/details")
+    public ResponseEntity<BookingWithServicesDTO> getBookingWithServices(@PathVariable Long id) {
+        return ResponseEntity.ok(bookingService.getBookingWithServices(id));
     }
 
     @GetMapping

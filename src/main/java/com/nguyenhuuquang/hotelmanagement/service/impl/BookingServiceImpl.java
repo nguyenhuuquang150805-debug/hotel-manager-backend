@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.nguyenhuuquang.hotelmanagement.dto.BookingDTO;
+import com.nguyenhuuquang.hotelmanagement.dto.BookingWithServicesDTO;
 import com.nguyenhuuquang.hotelmanagement.dto.CreateBookingRequest;
 import com.nguyenhuuquang.hotelmanagement.dto.DashboardStatsDTO;
 import com.nguyenhuuquang.hotelmanagement.entity.Booking;
@@ -426,6 +427,43 @@ public class BookingServiceImpl implements BookingService {
                                 .status(booking.getStatus().name())
                                 .notes(booking.getNotes())
                                 .createdAt(booking.getCreatedAt())
+                                .build();
+        }
+
+        @Override
+        public BookingWithServicesDTO getBookingWithServices(Long id) {
+                Booking booking = bookingRepo.findById(id)
+                                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đặt phòng"));
+
+                List<BookingWithServicesDTO.BookingServiceItemDTO> serviceItems = booking.getBookingServices()
+                                .stream()
+                                .map(bs -> BookingWithServicesDTO.BookingServiceItemDTO.builder()
+                                                .id(bs.getId())
+                                                .serviceId(bs.getService().getId())
+                                                .serviceName(bs.getService().getName())
+                                                .quantity(bs.getQuantity())
+                                                .price(bs.getUnitPrice())
+                                                .totalPrice(bs.getTotalPrice())
+                                                .build())
+                                .collect(Collectors.toList());
+
+                return BookingWithServicesDTO.builder()
+                                .id(booking.getId())
+                                .roomId(booking.getRoom().getId())
+                                .roomNumber(booking.getRoom().getRoomNumber())
+                                .customerName(booking.getCustomerName())
+                                .phone(booking.getPhone())
+                                .checkIn(booking.getCheckIn())
+                                .checkOut(booking.getCheckOut())
+                                .nights(booking.getNights())
+                                .roomAmount(booking.getRoomAmount())
+                                .serviceAmount(booking.getServiceAmount())
+                                .totalAmount(booking.getTotalAmount())
+                                .deposit(booking.getDeposit())
+                                .status(booking.getStatus().name())
+                                .notes(booking.getNotes())
+                                .createdAt(booking.getCreatedAt())
+                                .services(serviceItems)
                                 .build();
         }
 }
