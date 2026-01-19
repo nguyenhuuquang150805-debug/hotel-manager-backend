@@ -14,14 +14,13 @@ import io.jsonwebtoken.security.Keys;
 @Component
 public class JwtUtil {
 
-    // Tạo secret key an toàn cho HS256
     private final SecretKey SECRET_KEY = Keys.secretKeyFor(SignatureAlgorithm.HS256);
 
     public String generateToken(String email) {
         return Jwts.builder()
                 .setSubject(email)
                 .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + 86400000)) // 24 hours
+                .setExpiration(new Date(System.currentTimeMillis() + 86400000))
                 .signWith(SECRET_KEY)
                 .compact();
     }

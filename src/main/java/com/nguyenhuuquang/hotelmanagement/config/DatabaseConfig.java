@@ -54,29 +54,24 @@ public class DatabaseConfig {
         System.out.println("Password: " + (password != null ? "***" : "null"));
         System.out.println("================================");
 
-        // Cấu hình HikariCP với timeout tăng cao
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl(databaseUrl);
         config.setUsername(username);
         config.setPassword(password);
         config.setDriverClassName("org.postgresql.Driver");
 
-        // Connection pool settings
         config.setMaximumPoolSize(5);
         config.setMinimumIdle(2);
-        config.setConnectionTimeout(60000); // 60 seconds
-        config.setIdleTimeout(300000); // 5 minutes
-        config.setMaxLifetime(600000); // 10 minutes
-        config.setInitializationFailTimeout(60000); // 60 seconds
+        config.setConnectionTimeout(60000);
+        config.setIdleTimeout(300000);
+        config.setMaxLifetime(600000);
+        config.setInitializationFailTimeout(60000);
 
-        // Connection test query
         config.setConnectionTestQuery("SELECT 1");
         config.setValidationTimeout(5000);
 
-        // Pool name
         config.setPoolName("HotelManagementHikariPool");
 
-        // Auto-commit
         config.setAutoCommit(true);
 
         return new HikariDataSource(config);
