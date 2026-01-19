@@ -41,23 +41,19 @@ public class BookingServiceImpl implements BookingService {
         @Override
         @Transactional
         public BookingDTO createBooking(CreateBookingRequest request) {
-                // ✅ 1. Kiểm tra phòng có tồn tại không
                 Room room = roomRepo.findById(request.getRoomId())
                                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phòng"));
 
-                // ✅ 2. Kiểm tra ngày hợp lệ
                 long nights = ChronoUnit.DAYS.between(request.getCheckIn(), request.getCheckOut());
                 if (nights <= 0) {
                         throw new IllegalArgumentException("Ngày trả phòng phải sau ngày nhận phòng");
                 }
 
-                // ✅ 3. Kiểm tra xem có booking nào đang CHECKED_IN không
                 List<Booking> overlappingBookings = bookingRepo.findOverlappingBookings(
                                 request.getRoomId(),
                                 request.getCheckIn(),
                                 request.getCheckOut());
 
-                // Lọc chỉ lấy booking CHECKED_IN (đang có khách ở)
                 boolean hasCheckedInBooking = overlappingBookings.stream()
                                 .anyMatch(b -> b.getStatus() == BookingStatus.CHECKED_IN);
 
@@ -67,9 +63,6 @@ public class BookingServiceImpl implements BookingService {
 
                 BigDecimal deposit = request.getDeposit() != null ? request.getDeposit() : BigDecimal.ZERO;
 
-                // ✅ 5. Tạo booking mới
-                // - Nếu có booking CHECKED_IN → status = PENDING
-                // - Nếu không → status = PENDING (hoặc có thể để CONFIRMED tùy nghiệp vụ)
                 BookingStatus initialStatus = BookingStatus.PENDING;
 
                 Booking booking = Booking.builder()
@@ -92,13 +85,11 @@ public class BookingServiceImpl implements BookingService {
 
                 booking = bookingRepo.save(booking);
 
-                // ✅ 6. Cập nhật trạng thái phòng (chỉ khi chưa có booking CHECKED_IN)
                 if (!hasCheckedInBooking && room.getStatus() == RoomStatus.AVAILABLE) {
                         room.setStatus(RoomStatus.RESERVED);
                         roomRepo.save(room);
                 }
 
-                // ✅ 7. Ghi log
                 String statusNote = hasCheckedInBooking
                                 ? "Chờ xác nhận (Phòng đang có khách)"
                                 : "Chờ xác nhận";
@@ -465,5 +456,72 @@ public class BookingServiceImpl implements BookingService {
                                 .createdAt(booking.getCreatedAt())
                                 .services(serviceItems)
                                 .build();
+        }
+
+        @Override
+        @Transactional
+        public BookingDTO changeRoom(Long bookingId, Long newRoomId) {
+                Booking booking = bookingRepo.findById(bookingId)
+                                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đặt phòng"));
+
+                if (booking.getStatus() != BookingStatus.PENDING && booking.getStatus() != BookingStatus.CONFIRMED) {
+                        throw new IllegalStateException(
+                                        "Chỉ có thể đổi phòng khi booking đang ở trạng thái chờ xác nhận hoặc đã xác nhận");
+                }
+
+                Room oldRoom = booking.getRoom();
+                Room newRoom = roomRepo.findById(newRoomId)
+                                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phòng mới"));
+
+                if (newRoom.getStatus() != RoomStatus.AVAILABLE) {
+                        throw new IllegalStateException("Phòng mới không khả dụng");
+                }
+
+                List<Booking> overlappingBookings = bookingRepo.findOverlappingBookings(
+                                newRoomId,
+                                booking.getCheckIn(),
+                                booking.getCheckOut());
+
+                boolean hasCheckedInBooking = overlappingBookings.stream()
+                                .anyMatch(b -> b.getStatus() == BookingStatus.CHECKED_IN);
+
+                if (hasCheckedInBooking) {
+                        throw new IllegalStateException("Phòng mới đang có khách. Vui lòng chọn phòng khác.");
+                }
+
+                long nights = booking.getNights();
+                BigDecimal newRoomAmount = newRoom.getPrice().multiply(BigDecimal.valueOf(nights));
+
+                booking.setRoom(newRoom);
+                booking.setRoomAmount(newRoomAmount);
+                booking.recalculateTotalAmount();
+
+                List<Booking> oldRoomActiveBookings = bookingRepo.findActiveBookingsByRoom(oldRoom.getId());
+                boolean hasOtherActiveBooking = oldRoomActiveBookings.stream()
+                                .anyMatch(b -> !b.getId().equals(bookingId) &&
+                                                (b.getStatus() == BookingStatus.CHECKED_IN ||
+                                                                b.getStatus() == BookingStatus.CONFIRMED ||
+                                                                b.getStatus() == BookingStatus.PENDING));
+
+                if (!hasOtherActiveBooking) {
+                        oldRoom.setStatus(RoomStatus.AVAILABLE);
+                        roomRepo.save(oldRoom);
+                }
+
+                if (booking.getStatus() == BookingStatus.CONFIRMED || booking.getStatus() == BookingStatus.PENDING) {
+                        newRoom.setStatus(RoomStatus.RESERVED);
+                        roomRepo.save(newRoom);
+                }
+
+                booking = bookingRepo.save(booking);
+
+                logService.log(LogType.SUCCESS, "Đổi phòng", "Admin",
+                                String.format("Đã đổi phòng từ %s sang %s cho khách %s",
+                                                oldRoom.getRoomNumber(), newRoom.getRoomNumber(),
+                                                booking.getCustomerName()),
+                                String.format("Giá phòng mới: %s, Tổng tiền mới: %s",
+                                                newRoomAmount, booking.getTotalAmount()));
+
+                return convertToDTO(booking);
         }
 }

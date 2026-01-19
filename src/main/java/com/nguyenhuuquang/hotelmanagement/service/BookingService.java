@@ -35,4 +35,6 @@ public interface BookingService {
     DashboardStatsDTO getBookingStats();
 
     BookingDTO addServiceToBooking(Long bookingId, Long serviceId, Integer quantity);
+
+    BookingDTO changeRoom(Long bookingId, Long newRoomId);
 }

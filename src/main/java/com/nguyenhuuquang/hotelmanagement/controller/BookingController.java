@@ -1,6 +1,7 @@
 package com.nguyenhuuquang.hotelmanagement.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -107,4 +108,14 @@ public class BookingController {
         return ResponseEntity.ok(bookingService.getBookingStats());
     }
 
+    @PutMapping("/{id}/change-room")
+    public ResponseEntity<BookingDTO> changeRoom(
+            @PathVariable Long id,
+            @RequestBody Map<String, Long> request) {
+        Long newRoomId = request.get("newRoomId");
+        if (newRoomId == null) {
+            throw new IllegalArgumentException("newRoomId không được để trống");
+        }
+        return ResponseEntity.ok(bookingService.changeRoom(id, newRoomId));
+    }
 }
