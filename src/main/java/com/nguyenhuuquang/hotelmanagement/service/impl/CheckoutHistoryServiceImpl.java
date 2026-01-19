@@ -24,7 +24,9 @@ public class CheckoutHistoryServiceImpl implements CheckoutHistoryService {
     @Override
     @Transactional
     public CheckoutHistoryDTO createHistory(CheckoutHistoryDTO historyDTO) {
-        Double calculatedTotal = historyDTO.getRoomAmount() + historyDTO.getServiceAmount();
+        Double calculatedTotal = historyDTO.getRoomAmount()
+                + historyDTO.getServiceAmount()
+                - historyDTO.getDeposit();
 
         CheckoutHistory history = CheckoutHistory.builder()
                 .bookingId(historyDTO.getBookingId())
