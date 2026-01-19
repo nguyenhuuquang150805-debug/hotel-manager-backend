@@ -1,6 +1,7 @@
 package com.nguyenhuuquang.hotelmanagement.controller;
 
 import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 
 import org.springframework.format.annotation.DateTimeFormat;
@@ -39,7 +40,15 @@ public class TransactionController {
     }
 
     @GetMapping
-    public ResponseEntity<List<TransactionDTO>> getAllTransactions() {
+    public ResponseEntity<List<TransactionDTO>> getAllTransactions(
+            @RequestParam(required = false) String period) {
+
+        if (period != null) {
+            LocalDate[] dateRange = calculateDateRange(period);
+            return ResponseEntity.ok(
+                    transactionService.getTransactionsByDateRange(dateRange[0], dateRange[1]));
+        }
+
         return ResponseEntity.ok(transactionService.getAllTransactions());
     }
 
@@ -58,14 +67,51 @@ public class TransactionController {
 
     @GetMapping("/summary")
     public ResponseEntity<FinanceSummaryDTO> getFinanceSummary(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
-        return ResponseEntity.ok(transactionService.getFinanceSummary(startDate, endDate));
+            @RequestParam(required = false) String period,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+
+        LocalDate start, end;
+
+        if (period != null) {
+            LocalDate[] dateRange = calculateDateRange(period);
+            start = dateRange[0];
+            end = dateRange[1];
+        } else {
+            start = startDate;
+            end = endDate;
+        }
+
+        return ResponseEntity.ok(transactionService.getFinanceSummary(start, end));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTransaction(@PathVariable Long id) {
         transactionService.deleteTransaction(id);
         return ResponseEntity.noContent().build();
+    }
+
+    private LocalDate[] calculateDateRange(String period) {
+        LocalDate now = LocalDate.now();
+        LocalDate start, end = now;
+
+        switch (period.toLowerCase()) {
+            case "day":
+                start = now;
+                break;
+            case "week":
+                start = now.minusDays(now.getDayOfWeek().getValue() - 1);
+                break;
+            case "month":
+                start = now.with(TemporalAdjusters.firstDayOfMonth());
+                break;
+            case "year":
+                start = now.with(TemporalAdjusters.firstDayOfYear());
+                break;
+            default:
+                start = now.with(TemporalAdjusters.firstDayOfMonth());
+        }
+
+        return new LocalDate[] { start, end };
     }
 }
