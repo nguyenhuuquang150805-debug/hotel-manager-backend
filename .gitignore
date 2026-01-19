@@ -31,3 +31,21 @@ build/
 
 ### VS Code ###
 .vscode/
+
+
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Maven
+target/
+*.jar
+!.mvn/wrapper/maven-wrapper.jar
+
+# Logs
+*.log
