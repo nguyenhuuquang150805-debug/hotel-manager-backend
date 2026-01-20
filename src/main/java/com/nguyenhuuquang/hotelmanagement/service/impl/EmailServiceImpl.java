@@ -1,6 +1,7 @@
 package com.nguyenhuuquang.hotelmanagement.service.impl;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
@@ -21,43 +22,67 @@ public class EmailServiceImpl implements EmailService {
     @Value("${spring.mail.username}")
     private String fromEmail;
 
+    private static final int MAX_RETRY = 3;
+    private static final long RETRY_DELAY_MS = 2000;
+
     @Override
     @Async
     public void sendOtpEmail(String to, String otp) {
-        try {
-            log.info("📧 ============= EMAIL SENDING START =============");
-            log.info("📧 From: {}", fromEmail);
-            log.info("📧 To: {}", to);
-            log.info("🔑 OTP: {}", otp);
+        log.info("📧 ============= EMAIL SENDING START =============");
+        log.info("📧 From: {}", fromEmail);
+        log.info("📧 To: {}", to);
+        log.info("🔑 OTP: {}", otp);
 
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom(fromEmail);
-            message.setTo(to);
-            message.setSubject("Mã OTP đặt lại mật khẩu - Hotel Management");
-            message.setText(
-                    "Xin chào,\n\n" +
-                            "Mã OTP của bạn là: " + otp + "\n\n" +
-                            "Mã này có hiệu lực trong 5 phút.\n\n" +
-                            "Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.\n\n" +
-                            "Trân trọng,\n" +
-                            "Hotel Management Team");
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromEmail);
+        message.setTo(to);
+        message.setSubject("Mã OTP đặt lại mật khẩu - Hotel Management");
+        message.setText(buildEmailContent(otp));
 
-            log.info("📤 Attempting to send email via SMTP...");
-            long startTime = System.currentTimeMillis();
+        for (int attempt = 1; attempt <= MAX_RETRY; attempt++) {
+            try {
+                log.info("📤 Attempt {}/{} - Sending email via SMTP...", attempt, MAX_RETRY);
+                long startTime = System.currentTimeMillis();
 
-            mailSender.send(message);
+                mailSender.send(message);
 
-            long endTime = System.currentTimeMillis();
-            log.info("✅ Email sent successfully in {}ms", (endTime - startTime));
-            log.info("📧 ============= EMAIL SENDING END =============");
+                long duration = System.currentTimeMillis() - startTime;
+                log.info("✅ Email sent successfully in {}ms on attempt {}", duration, attempt);
+                log.info("📧 ============= EMAIL SENDING END =============");
+                return;
 
-        } catch (Exception e) {
-            log.error("❌ ============= EMAIL SENDING FAILED =============");
-            log.error("❌ Recipient: {}", to);
-            log.error("❌ Error type: {}", e.getClass().getName());
-            log.error("❌ Error message: {}", e.getMessage());
-            log.error("❌ Full stack trace:", e);
-            log.error("❌ ============================================");
+            } catch (MailException e) {
+                log.error("❌ Attempt {}/{} failed - Error: {}", attempt, MAX_RETRY, e.getMessage());
+
+                if (attempt < MAX_RETRY) {
+                    try {
+                        log.info("⏳ Waiting {}ms before retry...", RETRY_DELAY_MS);
+                        Thread.sleep(RETRY_DELAY_MS);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        log.error("❌ Retry interrupted");
+                        break;
+                    }
+                } else {
+                    log.error("❌ ============= ALL ATTEMPTS FAILED =============");
+                    log.error("❌ Recipient: {}", to);
+                    log.error("❌ Error type: {}", e.getClass().getName());
+                    log.error("❌ Error message: {}", e.getMessage());
+                    log.error("❌ Stack trace:", e);
+                    log.error("❌ ============================================");
+                }
+            }
         }
+    }
+
+    private String buildEmailContent(String otp) {
+        return String.format(
+                "Xin chào,\n\n" +
+                        "Mã OTP của bạn là: %s\n\n" +
+                        "Mã này có hiệu lực trong 5 phút.\n\n" +
+                        "Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.\n\n" +
+                        "Trân trọng,\n" +
+                        "Hotel Management Team",
+                otp);
     }
 }
