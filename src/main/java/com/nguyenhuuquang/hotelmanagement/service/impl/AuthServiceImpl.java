@@ -125,11 +125,8 @@ public class AuthServiceImpl implements AuthService {
                     log.error("User not found: {}", request.getEmail());
                     return new AuthenticationException("Email không tồn tại trong hệ thống");
                 });
-
         passwordResetTokenRepository.deleteByEmail(request.getEmail());
-
         String otp = generateOtp();
-
         PasswordResetToken token = PasswordResetToken.builder()
                 .email(request.getEmail())
                 .otp(otp)
@@ -140,8 +137,7 @@ public class AuthServiceImpl implements AuthService {
 
         passwordResetTokenRepository.save(token);
         emailService.sendOtpEmail(request.getEmail(), otp);
-
-        log.info("OTP sent successfully to email: {}", request.getEmail());
+        log.info("OTP generated and queued for sending to email: {}", request.getEmail());
     }
 
     @Override
