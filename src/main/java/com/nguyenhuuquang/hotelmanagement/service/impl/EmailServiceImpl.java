@@ -1,5 +1,6 @@
 package com.nguyenhuuquang.hotelmanagement.service.impl;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
@@ -17,14 +18,20 @@ public class EmailServiceImpl implements EmailService {
 
     private final JavaMailSender mailSender;
 
+    @Value("${spring.mail.username}")
+    private String fromEmail;
+
     @Override
     @Async
     public void sendOtpEmail(String to, String otp) {
         try {
-            log.info("Preparing to send OTP email to: {}", to);
+            log.info("📧 ============= EMAIL SENDING START =============");
+            log.info("📧 From: {}", fromEmail);
+            log.info("📧 To: {}", to);
+            log.info("🔑 OTP: {}", otp);
 
             SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom("noreply@hotelmanagement.com"); // Thêm sender
+            message.setFrom(fromEmail);
             message.setTo(to);
             message.setSubject("Mã OTP đặt lại mật khẩu - Hotel Management");
             message.setText(
@@ -35,11 +42,22 @@ public class EmailServiceImpl implements EmailService {
                             "Trân trọng,\n" +
                             "Hotel Management Team");
 
-            mailSender.send(message);
-            log.info("✅ OTP email sent successfully to: {}", to);
-        } catch (Exception e) {
-            log.error("❌ Failed to send OTP email to: {}", to, e);
+            log.info("📤 Attempting to send email via SMTP...");
+            long startTime = System.currentTimeMillis();
 
+            mailSender.send(message);
+
+            long endTime = System.currentTimeMillis();
+            log.info("✅ Email sent successfully in {}ms", (endTime - startTime));
+            log.info("📧 ============= EMAIL SENDING END =============");
+
+        } catch (Exception e) {
+            log.error("❌ ============= EMAIL SENDING FAILED =============");
+            log.error("❌ Recipient: {}", to);
+            log.error("❌ Error type: {}", e.getClass().getName());
+            log.error("❌ Error message: {}", e.getMessage());
+            log.error("❌ Full stack trace:", e);
+            log.error("❌ ============================================");
         }
     }
 }
