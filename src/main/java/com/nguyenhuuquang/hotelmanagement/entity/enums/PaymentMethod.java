@@ -1,6 +1,6 @@
 package com.nguyenhuuquang.hotelmanagement.entity.enums;
 
 public enum PaymentMethod {
-    CASH, CARD, MOBILE, PAYOS
+    CASH, CARD, TRANSFER
 
 }

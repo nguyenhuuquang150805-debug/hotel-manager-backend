@@ -158,7 +158,6 @@ public class PayosController {
         try {
             System.out.println("🔍 Verify payment: " + orderCode);
 
-            // ✅ GỌI PAYOS API ĐỂ KIỂM TRA TRẠNG THÁI
             Map<String, Object> payosStatus = payosService.getPaymentStatus(orderCode);
 
             Booking booking = bookingRepository.findAll().stream()
@@ -172,7 +171,6 @@ public class PayosController {
                         "error", "Không tìm thấy booking"));
             }
 
-            // ✅ KIỂM TRA STATUS TỪ PAYOS
             boolean isPaid = false;
             if (payosStatus != null && "00".equals(payosStatus.get("code"))) {
                 Map<String, Object> data = (Map<String, Object>) payosStatus.get("data");
@@ -181,12 +179,10 @@ public class PayosController {
                 if ("PAID".equals(status)) {
                     isPaid = true;
 
-                    // Cập nhật booking nếu chưa được cập nhật
                     if (!booking.getNotes().contains("[PAYMENT_SUCCESS: " + orderCode)) {
                         Long amount = Long.parseLong(data.get("amount").toString());
                         BigDecimal paidAmount = BigDecimal.valueOf(amount);
 
-                        // ✅ CẬP NHẬT CẢ DEPOSIT VÀ PAIDAMOUNT
                         booking.setDeposit(paidAmount);
                         booking.setPaidAmount(booking.getPaidAmount().add(paidAmount));
 
