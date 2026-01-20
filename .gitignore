@@ -49,3 +49,6 @@ target/
 
 # Logs
 *.log
+
+application-local.properties
+.env

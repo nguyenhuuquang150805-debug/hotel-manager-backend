@@ -10,8 +10,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.nguyenhuuquang.hotelmanagement.dto.AuthResponse;
 import com.nguyenhuuquang.hotelmanagement.dto.ChangePasswordRequest;
+import com.nguyenhuuquang.hotelmanagement.dto.ForgotPasswordRequest;
 import com.nguyenhuuquang.hotelmanagement.dto.LoginRequest;
 import com.nguyenhuuquang.hotelmanagement.dto.RegisterRequest;
+import com.nguyenhuuquang.hotelmanagement.dto.ResetPasswordRequest;
 import com.nguyenhuuquang.hotelmanagement.entity.User;
 import com.nguyenhuuquang.hotelmanagement.service.AuthService;
 
@@ -42,5 +44,17 @@ public class AuthController {
     public ResponseEntity<String> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
         authService.changePassword(request);
         return ResponseEntity.ok("Đổi mật khẩu thành công");
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<String> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        authService.forgotPassword(request);
+        return ResponseEntity.ok("OTP đã được gửi đến email của bạn");
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<String> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return ResponseEntity.ok("Đặt lại mật khẩu thành công");
     }
 }
