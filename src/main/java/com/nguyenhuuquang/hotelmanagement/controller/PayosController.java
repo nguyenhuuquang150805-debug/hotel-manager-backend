@@ -44,9 +44,11 @@ public class PayosController {
             booking.setNotes(currentNotes + "\n[PAYOS_ORDER_CODE:" + orderCode + "]");
             bookingRepository.save(booking);
 
-            String description = String.format("Coc phong %s - KH: %s",
-                    booking.getRoom().getRoomNumber(),
-                    booking.getCustomerName());
+            String description = String.format("Coc P%s", booking.getRoom().getRoomNumber());
+
+            if (description.length() > 25) {
+                description = description.substring(0, 25);
+            }
 
             Map<String, Object> resp = payosService.createPaymentLink(
                     orderCode,
@@ -122,7 +124,6 @@ public class PayosController {
             if ("PAID".equals(status)) {
                 BigDecimal paidAmount = BigDecimal.valueOf(amount);
 
-                // ✅ CẬP NHẬT CẢ DEPOSIT VÀ PAIDAMOUNT
                 booking.setDeposit(paidAmount);
                 booking.setPaidAmount(booking.getPaidAmount().add(paidAmount));
 
