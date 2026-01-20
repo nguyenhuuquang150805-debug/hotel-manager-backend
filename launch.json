@@ -7,7 +7,12 @@
             "request": "launch",
             "mainClass": "com.nguyenhuuquang.hotelmanagement.HotelmanagementApplication",
             "projectName": "hotelmanagement",
-            "envFile": "${workspaceFolder}/.env"
+            "env": {
+                "PGPASSWORD": "postgres",
+                "PAYOS_CLIENT_ID": "b1f00f51-1a3e-4f76-8a3a-4e4792f7a10d",
+                "PAYOS_API_KEY": "91decc1a-6f01-4a7a-91d2-40f98d581bbe",
+                "PAYOS_CHECKSUM_KEY": "4823a880e9f9773f399226babb83718161c6402c6e3a9c88ef49db9529f3423d"
+            }
         }
     ]
 }

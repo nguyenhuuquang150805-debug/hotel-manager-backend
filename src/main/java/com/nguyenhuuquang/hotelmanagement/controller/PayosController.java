@@ -56,10 +56,27 @@ public class PayosController {
                     dto.cancelUrl != null ? dto.cancelUrl : "myapp://payment-return",
                     dto.expiredAt);
 
-            System.out.println("✅ PayOS response: " + resp);
+            System.out.println("✅ PayOS full response: " + resp);
+
+            if (resp == null) {
+                throw new RuntimeException("PayOS trả về response null");
+            }
+
+            String code = (String) resp.get("code");
+            if (!"00".equals(code)) {
+                String errorMsg = (String) resp.get("desc");
+                throw new RuntimeException("PayOS error: " + errorMsg);
+            }
 
             Map<String, Object> data = (Map<String, Object>) resp.get("data");
+            if (data == null) {
+                throw new RuntimeException("PayOS response không có trường data");
+            }
+
             String checkoutUrl = (String) data.get("checkoutUrl");
+            if (checkoutUrl == null || checkoutUrl.isEmpty()) {
+                throw new RuntimeException("PayOS không trả về checkoutUrl");
+            }
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
