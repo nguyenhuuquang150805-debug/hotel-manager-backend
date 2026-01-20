@@ -143,4 +143,35 @@ public class PayosService {
             throw new RuntimeException("Lỗi khi gọi PayOS API: " + e.getMessage(), e);
         }
     }
+
+    public Map<String, Object> getPaymentStatus(Long orderCode) {
+        try {
+            System.out.println("🔍 Checking payment status for order: " + orderCode);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("x-client-id", clientId);
+            headers.set("x-api-key", apiKey);
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+            String url = "https://api-merchant.payos.vn/v2/payment-requests/" + orderCode;
+
+            ResponseEntity<Map> res = rest.exchange(
+                    url,
+                    org.springframework.http.HttpMethod.GET,
+                    entity,
+                    Map.class);
+
+            Map<String, Object> responseBody = res.getBody();
+            System.out.println("✅ Payment status response: " + responseBody);
+
+            return responseBody;
+
+        } catch (Exception e) {
+            System.err.println("❌ Error getting payment status: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Lỗi khi kiểm tra trạng thái thanh toán: " + e.getMessage(), e);
+        }
+    }
 }

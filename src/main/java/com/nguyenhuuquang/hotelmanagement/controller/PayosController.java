@@ -154,6 +154,9 @@ public class PayosController {
         try {
             System.out.println("🔍 Verify payment: " + orderCode);
 
+            // ✅ GỌI PAYOS API ĐỂ KIỂM TRA TRẠNG THÁI
+            Map<String, Object> payosStatus = payosService.getPaymentStatus(orderCode);
+
             Booking booking = bookingRepository.findAll().stream()
                     .filter(b -> b.getNotes() != null && b.getNotes().contains("[PAYOS_ORDER_CODE:" + orderCode + "]"))
                     .findFirst()
@@ -165,8 +168,32 @@ public class PayosController {
                         "error", "Không tìm thấy booking"));
             }
 
-            boolean isPaid = booking.getNotes() != null &&
-                    booking.getNotes().contains("[PAYMENT_SUCCESS: " + orderCode);
+            // ✅ KIỂM TRA STATUS TỪ PAYOS
+            boolean isPaid = false;
+            if (payosStatus != null && "00".equals(payosStatus.get("code"))) {
+                Map<String, Object> data = (Map<String, Object>) payosStatus.get("data");
+                String status = (String) data.get("status");
+
+                if ("PAID".equals(status)) {
+                    isPaid = true;
+
+                    // Cập nhật booking nếu chưa được cập nhật
+                    if (!booking.getNotes().contains("[PAYMENT_SUCCESS: " + orderCode)) {
+                        Long amount = Long.parseLong(data.get("amount").toString());
+                        BigDecimal paidAmount = BigDecimal.valueOf(amount);
+                        booking.setPaidAmount(booking.getPaidAmount().add(paidAmount));
+
+                        String transactionId = data.get("id") != null ? data.get("id").toString() : "N/A";
+                        String paymentInfo = String.format(
+                                "\n[PAYMENT_SUCCESS: %s | TxID: %s | Amount: %d | Time: %s]",
+                                orderCode, transactionId, amount, LocalDateTime.now());
+                        booking.setNotes(booking.getNotes() + paymentInfo);
+
+                        bookingRepository.save(booking);
+                        System.out.println("✅ Đã cập nhật thanh toán cho booking #" + booking.getId());
+                    }
+                }
+            }
 
             return ResponseEntity.ok(Map.of(
                     "success", true,
@@ -178,6 +205,8 @@ public class PayosController {
                     "deposit", booking.getDeposit()));
 
         } catch (Exception e) {
+            System.err.println("❌ Error verifying payment: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.status(500).body(Map.of(
                     "success", false,
                     "error", e.getMessage()));
