@@ -14,6 +14,7 @@ import com.nguyenhuuquang.hotelmanagement.dto.ForgotPasswordRequest;
 import com.nguyenhuuquang.hotelmanagement.dto.LoginRequest;
 import com.nguyenhuuquang.hotelmanagement.dto.RegisterRequest;
 import com.nguyenhuuquang.hotelmanagement.dto.ResetPasswordRequest;
+import com.nguyenhuuquang.hotelmanagement.dto.VerifyOtpRequest;
 import com.nguyenhuuquang.hotelmanagement.entity.User;
 import com.nguyenhuuquang.hotelmanagement.service.AuthService;
 
@@ -50,6 +51,12 @@ public class AuthController {
     public ResponseEntity<String> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         authService.forgotPassword(request);
         return ResponseEntity.ok("OTP đã được gửi đến email của bạn");
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<String> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
+        authService.verifyOtp(request);
+        return ResponseEntity.ok("OTP hợp lệ");
     }
 
     @PostMapping("/reset-password")

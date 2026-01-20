@@ -13,6 +13,7 @@ import com.nguyenhuuquang.hotelmanagement.dto.ForgotPasswordRequest;
 import com.nguyenhuuquang.hotelmanagement.dto.LoginRequest;
 import com.nguyenhuuquang.hotelmanagement.dto.RegisterRequest;
 import com.nguyenhuuquang.hotelmanagement.dto.ResetPasswordRequest;
+import com.nguyenhuuquang.hotelmanagement.dto.VerifyOtpRequest;
 import com.nguyenhuuquang.hotelmanagement.entity.PasswordResetToken;
 import com.nguyenhuuquang.hotelmanagement.entity.User;
 import com.nguyenhuuquang.hotelmanagement.exception.AuthenticationException;
@@ -142,6 +143,23 @@ public class AuthServiceImpl implements AuthService {
         emailService.sendOtpEmail(request.getEmail(), otp);
 
         log.info("OTP generated and queued for sending to email: {}", request.getEmail());
+    }
+
+    @Override
+    public void verifyOtp(VerifyOtpRequest request) {
+        log.info("Verify OTP request for email: {}", request.getEmail());
+
+        PasswordResetToken token = passwordResetTokenRepository
+                .findByEmailAndOtpAndUsedFalseAndExpiryTimeAfter(
+                        request.getEmail(),
+                        request.getOtp(),
+                        LocalDateTime.now())
+                .orElseThrow(() -> {
+                    log.error("Invalid or expired OTP for email: {}", request.getEmail());
+                    return new AuthenticationException("OTP không hợp lệ hoặc đã hết hạn");
+                });
+
+        log.info("OTP verified successfully for email: {}", request.getEmail());
     }
 
     @Override
