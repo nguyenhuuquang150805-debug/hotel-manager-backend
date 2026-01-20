@@ -121,6 +121,9 @@ public class PayosController {
 
             if ("PAID".equals(status)) {
                 BigDecimal paidAmount = BigDecimal.valueOf(amount);
+
+                // ✅ CẬP NHẬT CẢ DEPOSIT VÀ PAIDAMOUNT
+                booking.setDeposit(paidAmount);
                 booking.setPaidAmount(booking.getPaidAmount().add(paidAmount));
 
                 String paymentInfo = String.format(
@@ -130,7 +133,8 @@ public class PayosController {
 
                 bookingRepository.save(booking);
 
-                System.out.println("✅ Đã cập nhật thanh toán cho booking #" + booking.getId());
+                System.out.println(
+                        "✅ Đã cập nhật deposit=" + paidAmount + " và paidAmount cho booking #" + booking.getId());
             } else if ("CANCELLED".equals(status)) {
                 String cancelInfo = String.format("\n[PAYMENT_CANCELLED: %s | Time: %s]",
                         orderCode, LocalDateTime.now());
@@ -181,6 +185,9 @@ public class PayosController {
                     if (!booking.getNotes().contains("[PAYMENT_SUCCESS: " + orderCode)) {
                         Long amount = Long.parseLong(data.get("amount").toString());
                         BigDecimal paidAmount = BigDecimal.valueOf(amount);
+
+                        // ✅ CẬP NHẬT CẢ DEPOSIT VÀ PAIDAMOUNT
+                        booking.setDeposit(paidAmount);
                         booking.setPaidAmount(booking.getPaidAmount().add(paidAmount));
 
                         String transactionId = data.get("id") != null ? data.get("id").toString() : "N/A";
@@ -190,7 +197,8 @@ public class PayosController {
                         booking.setNotes(booking.getNotes() + paymentInfo);
 
                         bookingRepository.save(booking);
-                        System.out.println("✅ Đã cập nhật thanh toán cho booking #" + booking.getId());
+                        System.out.println("✅ Đã cập nhật deposit=" + paidAmount + " và paidAmount cho booking #"
+                                + booking.getId());
                     }
                 }
             }
