@@ -119,16 +119,23 @@ public class AuthServiceImpl implements AuthService {
                     log.error("User not found: {}", request.getEmail());
                     return new AuthenticationException("Email không tồn tại trong hệ thống");
                 });
+
         String resetToken = String.format("%06d", (int) (Math.random() * 1000000));
         user.setResetToken(resetToken);
         user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(15));
         userRepository.save(user);
+
+        // Log OTP ra console
+        log.info("========================================");
+        log.info("🔑 OTP CODE FOR {}: {}", user.getEmail(), resetToken);
+        log.info("========================================");
 
         try {
             emailService.sendResetPasswordEmail(user.getEmail(), resetToken);
             log.info("Email sending triggered for: {}", request.getEmail());
         } catch (Exception e) {
             log.error("Error triggering email send: {}", e.getMessage());
+            // Không throw exception - vẫn cho phép user lấy OTP từ logs
         }
 
         log.info("Reset token generated and saved for email: {}", request.getEmail());
