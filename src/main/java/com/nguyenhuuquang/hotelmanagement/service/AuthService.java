@@ -6,7 +6,6 @@ import com.nguyenhuuquang.hotelmanagement.dto.ForgotPasswordRequest;
 import com.nguyenhuuquang.hotelmanagement.dto.LoginRequest;
 import com.nguyenhuuquang.hotelmanagement.dto.RegisterRequest;
 import com.nguyenhuuquang.hotelmanagement.dto.ResetPasswordRequest;
-import com.nguyenhuuquang.hotelmanagement.dto.VerifyOtpRequest;
 import com.nguyenhuuquang.hotelmanagement.entity.User;
 
 public interface AuthService {
@@ -19,6 +18,4 @@ public interface AuthService {
     void forgotPassword(ForgotPasswordRequest request);
 
     void resetPassword(ResetPasswordRequest request);
-
-    void verifyOtp(VerifyOtpRequest request);
 }

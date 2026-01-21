@@ -1,7 +1,6 @@
 package com.nguyenhuuquang.hotelmanagement.service.impl;
 
 import java.time.LocalDateTime;
-import java.util.Random;
 
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -13,16 +12,12 @@ import com.nguyenhuuquang.hotelmanagement.dto.ForgotPasswordRequest;
 import com.nguyenhuuquang.hotelmanagement.dto.LoginRequest;
 import com.nguyenhuuquang.hotelmanagement.dto.RegisterRequest;
 import com.nguyenhuuquang.hotelmanagement.dto.ResetPasswordRequest;
-import com.nguyenhuuquang.hotelmanagement.dto.VerifyOtpRequest;
-import com.nguyenhuuquang.hotelmanagement.entity.PasswordResetToken;
 import com.nguyenhuuquang.hotelmanagement.entity.User;
 import com.nguyenhuuquang.hotelmanagement.exception.AuthenticationException;
-import com.nguyenhuuquang.hotelmanagement.repository.PasswordResetTokenRepository;
 import com.nguyenhuuquang.hotelmanagement.repository.UserRepository;
 import com.nguyenhuuquang.hotelmanagement.service.AuthService;
 import com.nguyenhuuquang.hotelmanagement.service.EmailService;
 
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -35,7 +30,6 @@ public class AuthServiceImpl implements AuthService {
     private final BCryptPasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final EmailService emailService;
-    private final PasswordResetTokenRepository passwordResetTokenRepository;
 
     @Override
     public User register(RegisterRequest request) {
@@ -117,7 +111,6 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional
     public void forgotPassword(ForgotPasswordRequest request) {
         log.info("Forgot password request for email: {}", request.getEmail());
 
@@ -127,77 +120,38 @@ public class AuthServiceImpl implements AuthService {
                     return new AuthenticationException("Email không tồn tại trong hệ thống");
                 });
 
-        passwordResetTokenRepository.deleteByEmail(request.getEmail());
-        String otp = generateOtp();
-        log.warn("🔑🔑🔑 OTP FOR {}: {} 🔑🔑🔑", request.getEmail(), otp);
-
-        PasswordResetToken token = PasswordResetToken.builder()
-                .email(request.getEmail())
-                .otp(otp)
-                .expiryTime(LocalDateTime.now().plusMinutes(5))
-                .used(false)
-                .createdAt(LocalDateTime.now())
-                .build();
-
-        passwordResetTokenRepository.save(token);
-
-        try {
-            emailService.sendOtpEmail(request.getEmail(), otp);
-            log.info("OTP email sent successfully to: {}", request.getEmail());
-        } catch (Exception e) {
-            log.error("Failed to send email to: {}", request.getEmail(), e);
-            throw new AuthenticationException("Không thể gửi email. Vui lòng kiểm tra lại email hoặc thử lại sau.");
-        }
-    }
-
-    @Override
-    public void verifyOtp(VerifyOtpRequest request) {
-        log.info("Verify OTP request for email: {}", request.getEmail());
-
-        PasswordResetToken token = passwordResetTokenRepository
-                .findByEmailAndOtpAndUsedFalseAndExpiryTimeAfter(
-                        request.getEmail(),
-                        request.getOtp(),
-                        LocalDateTime.now())
-                .orElseThrow(() -> {
-                    log.error("Invalid or expired OTP for email: {}", request.getEmail());
-                    return new AuthenticationException("OTP không hợp lệ hoặc đã hết hạn");
-                });
-
-        log.info("OTP verified successfully for email: {}", request.getEmail());
-    }
-
-    @Override
-    @Transactional
-    public void resetPassword(ResetPasswordRequest request) {
-        log.info("Reset password request for email: {}", request.getEmail());
-
-        PasswordResetToken token = passwordResetTokenRepository
-                .findByEmailAndOtpAndUsedFalseAndExpiryTimeAfter(
-                        request.getEmail(),
-                        request.getOtp(),
-                        LocalDateTime.now())
-                .orElseThrow(() -> {
-                    log.error("Invalid or expired OTP for email: {}", request.getEmail());
-                    return new AuthenticationException("OTP không hợp lệ hoặc đã hết hạn");
-                });
-
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new AuthenticationException("Không tìm thấy người dùng"));
-
-        String encodedPassword = passwordEncoder.encode(request.getNewPassword());
-        user.setPassword(encodedPassword);
+        // Generate 6-digit OTP
+        String resetToken = String.format("%06d", (int) (Math.random() * 1000000));
+        user.setResetToken(resetToken);
+        user.setResetTokenExpiry(LocalDateTime.now().plusMinutes(15));
         userRepository.save(user);
 
-        token.setUsed(true);
-        passwordResetTokenRepository.save(token);
-
-        log.info("Password reset successfully for email: {}", request.getEmail());
+        emailService.sendResetPasswordEmail(user.getEmail(), resetToken);
+        log.info("Reset token sent to email: {}", request.getEmail());
     }
 
-    private String generateOtp() {
-        Random random = new Random();
-        int otp = 100000 + random.nextInt(900000);
-        return String.valueOf(otp);
+    @Override
+    public void resetPassword(ResetPasswordRequest request) {
+        log.info("Reset password request with token");
+
+        User user = userRepository.findByResetToken(request.getToken())
+                .orElseThrow(() -> {
+                    log.error("Invalid reset token: {}", request.getToken());
+                    return new AuthenticationException("Mã xác thực không hợp lệ");
+                });
+
+        if (user.getResetTokenExpiry().isBefore(LocalDateTime.now())) {
+            log.error("Reset token expired for user: {}", user.getEmail());
+            throw new AuthenticationException("Mã xác thực đã hết hạn");
+        }
+
+        String encodedNewPassword = passwordEncoder.encode(request.getNewPassword());
+        user.setPassword(encodedNewPassword);
+        user.setResetToken(null);
+        user.setResetTokenExpiry(null);
+        userRepository.save(user);
+
+        log.info("Password reset successfully for user: {}", user.getEmail());
     }
+
 }
