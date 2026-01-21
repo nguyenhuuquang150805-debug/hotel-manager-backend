@@ -7,6 +7,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import com.nguyenhuuquang.hotelmanagement.exception.AuthenticationException;
 import com.nguyenhuuquang.hotelmanagement.service.EmailService;
 
 import lombok.RequiredArgsConstructor;
@@ -39,6 +40,8 @@ public class EmailServiceImpl implements EmailService {
         message.setSubject("Mã OTP đặt lại mật khẩu - Hotel Management");
         message.setText(buildEmailContent(otp));
 
+        Exception lastException = null;
+
         for (int attempt = 1; attempt <= MAX_RETRY; attempt++) {
             try {
                 log.info("📤 Attempt {}/{} - Sending email via SMTP...", attempt, MAX_RETRY);
@@ -52,11 +55,13 @@ public class EmailServiceImpl implements EmailService {
                 return;
 
             } catch (MailException e) {
-                log.error("❌ Attempt {}/{} failed - Error: {}", attempt, MAX_RETRY, e.getMessage());
+                lastException = e;
+                log.error("❌ Attempt {}/{} failed", attempt, MAX_RETRY);
+                log.error("❌ Error type: {}", e.getClass().getSimpleName());
+                log.error("❌ Error message: {}", e.getMessage());
 
-                // Log chi tiết hơn về lỗi
                 if (e.getCause() != null) {
-                    log.error("❌ Cause: {}", e.getCause().getMessage());
+                    log.error("❌ Root cause: {}", e.getCause().getMessage());
                 }
 
                 if (attempt < MAX_RETRY) {
@@ -68,16 +73,18 @@ public class EmailServiceImpl implements EmailService {
                         log.error("❌ Retry interrupted");
                         break;
                     }
-                } else {
-                    log.error("❌ ============= ALL ATTEMPTS FAILED =============");
-                    log.error("❌ Recipient: {}", to);
-                    log.error("❌ Error type: {}", e.getClass().getName());
-                    log.error("❌ Error message: {}", e.getMessage());
-                    log.error("❌ ============================================");
-                    throw new RuntimeException("Không thể gửi email sau " + MAX_RETRY + " lần thử", e);
                 }
             }
         }
+
+        // Tất cả attempts đều fail
+        log.error("❌ ============= ALL ATTEMPTS FAILED =============");
+        log.error("❌ Recipient: {}", to);
+        log.error("❌ Final error:", lastException);
+        log.error("❌ ============================================");
+
+        // Throw exception để AuthService catch được
+        throw new AuthenticationException("Không thể gửi email. Vui lòng thử lại sau.");
     }
 
     private String buildEmailContent(String otp) {

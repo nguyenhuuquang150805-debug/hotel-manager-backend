@@ -140,9 +140,14 @@ public class AuthServiceImpl implements AuthService {
                 .build();
 
         passwordResetTokenRepository.save(token);
-        emailService.sendOtpEmail(request.getEmail(), otp);
 
-        log.info("OTP generated and queued for sending to email: {}", request.getEmail());
+        try {
+            emailService.sendOtpEmail(request.getEmail(), otp);
+            log.info("OTP email sent successfully to: {}", request.getEmail());
+        } catch (Exception e) {
+            log.error("Failed to send email to: {}", request.getEmail(), e);
+            throw new AuthenticationException("Không thể gửi email. Vui lòng kiểm tra lại email hoặc thử lại sau.");
+        }
     }
 
     @Override
