@@ -54,6 +54,11 @@ public class EmailServiceImpl implements EmailService {
             } catch (MailException e) {
                 log.error("❌ Attempt {}/{} failed - Error: {}", attempt, MAX_RETRY, e.getMessage());
 
+                // Log chi tiết hơn về lỗi
+                if (e.getCause() != null) {
+                    log.error("❌ Cause: {}", e.getCause().getMessage());
+                }
+
                 if (attempt < MAX_RETRY) {
                     try {
                         log.info("⏳ Waiting {}ms before retry...", RETRY_DELAY_MS);
@@ -68,8 +73,8 @@ public class EmailServiceImpl implements EmailService {
                     log.error("❌ Recipient: {}", to);
                     log.error("❌ Error type: {}", e.getClass().getName());
                     log.error("❌ Error message: {}", e.getMessage());
-                    log.error("❌ Stack trace:", e);
                     log.error("❌ ============================================");
+                    throw new RuntimeException("Không thể gửi email sau " + MAX_RETRY + " lần thử", e);
                 }
             }
         }
