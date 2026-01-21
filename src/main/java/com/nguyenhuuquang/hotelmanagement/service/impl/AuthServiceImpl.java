@@ -80,10 +80,19 @@ public class AuthServiceImpl implements AuthService {
         log.info("Login successful for user: {}", request.getEmail());
         String token = jwtUtil.generateToken(user.getEmail());
 
+        AuthResponse.UserInfo userInfo = AuthResponse.UserInfo.builder()
+                .id(user.getId())
+                .fullName(user.getFullName())
+                .email(user.getEmail())
+                .phone(user.getPhone())
+                .role(user.getRole())
+                .build();
+
         return AuthResponse.builder()
                 .token(token)
                 .email(user.getEmail())
                 .role(user.getRole())
+                .user(userInfo)
                 .build();
     }
 
