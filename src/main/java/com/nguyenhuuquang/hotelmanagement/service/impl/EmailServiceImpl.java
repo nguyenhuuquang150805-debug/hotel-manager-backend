@@ -2,6 +2,7 @@ package com.nguyenhuuquang.hotelmanagement.service.impl;
 
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import com.nguyenhuuquang.hotelmanagement.service.EmailService;
@@ -16,10 +17,14 @@ public class EmailServiceImpl implements EmailService {
 
     private final JavaMailSender mailSender;
 
+    @Async
     @Override
     public void sendResetPasswordEmail(String toEmail, String resetToken) {
         try {
+            log.info("Starting to send reset password email to: {}", toEmail);
+
             SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom("thienquynhfff@gmail.com");
             message.setTo(toEmail);
             message.setSubject("Đặt lại mật khẩu - Hotel Management");
             message.setText("Xin chào,\n\n" +
@@ -31,9 +36,9 @@ public class EmailServiceImpl implements EmailService {
                     "Hotel Management Team");
 
             mailSender.send(message);
-            log.info("Reset password email sent to: {}", toEmail);
+            log.info("✅ Reset password email sent successfully to: {}", toEmail);
         } catch (Exception e) {
-            log.error("Failed to send email to: {}", toEmail, e);
+            log.error("❌ Failed to send email to: {}", toEmail, e);
             throw new RuntimeException("Không thể gửi email. Vui lòng thử lại sau.");
         }
     }
