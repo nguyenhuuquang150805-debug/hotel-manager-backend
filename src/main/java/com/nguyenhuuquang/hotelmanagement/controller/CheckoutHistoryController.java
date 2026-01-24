@@ -82,8 +82,18 @@ public class CheckoutHistoryController {
         return ResponseEntity.ok(historyService.getRoomPerformanceAnalysis(startDate, endDate));
     }
 
+    @GetMapping("/seed-data")
+    public ResponseEntity<String> seedSampleDataGet() {
+        return seedSampleData();
+    }
+
     @PostMapping("/seed-data")
-    public ResponseEntity<String> seedSampleData() {
+    public ResponseEntity<String> seedSampleDataPost() {
+        return seedSampleData();
+    }
+
+    // PRIVATE METHOD CHUNG CHO CẢ GET VÀ POST
+    private ResponseEntity<String> seedSampleData() {
         try {
             LocalDate today = LocalDate.now();
 
