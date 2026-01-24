@@ -81,4 +81,50 @@ public class CheckoutHistoryController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         return ResponseEntity.ok(historyService.getRoomPerformanceAnalysis(startDate, endDate));
     }
+
+    @PostMapping("/seed-data")
+    public ResponseEntity<String> seedSampleData() {
+        try {
+            LocalDate today = LocalDate.now();
+
+            // Tạo 50 checkout history từ 6 tháng trước đến hôm nay
+            for (int i = 0; i < 50; i++) {
+                LocalDate checkOutDate = today.minusDays((long) (Math.random() * 180));
+                LocalDate checkInDate = checkOutDate.minusDays((long) (Math.random() * 5 + 1));
+                int nights = (int) java.time.temporal.ChronoUnit.DAYS.between(checkInDate, checkOutDate);
+
+                String[] customers = { "Nguyễn Văn A", "Trần Thị B", "Lê Văn C", "Phạm Thị D", "Hoàng Văn E" };
+                String[] phones = { "0901234567", "0912345678", "0923456789", "0934567890", "0945678901" };
+                String[] rooms = { "101", "102", "103", "201", "202", "203", "301", "302" };
+
+                int customerIdx = (int) (Math.random() * customers.length);
+                double roomPrice = 300000 + (Math.random() * 200000); // 300k-500k/đêm
+                double roomAmount = roomPrice * nights;
+                double serviceAmount = Math.random() * 500000; // 0-500k dịch vụ
+                double deposit = roomAmount * 0.3; // cọc 30%
+
+                CheckoutHistoryDTO dto = CheckoutHistoryDTO.builder()
+                        .bookingId((long) (i + 1))
+                        .roomNumber(rooms[(int) (Math.random() * rooms.length)])
+                        .customerName(customers[customerIdx])
+                        .phone(phones[customerIdx])
+                        .checkIn(checkInDate)
+                        .checkOut(checkOutDate)
+                        .actualCheckOut(checkOutDate)
+                        .nights(nights)
+                        .roomAmount(roomAmount)
+                        .serviceAmount(serviceAmount)
+                        .deposit(deposit)
+                        .notes("Sample checkout data #" + (i + 1))
+                        .build();
+
+                historyService.createHistory(dto);
+            }
+
+            return ResponseEntity.ok("✅ Đã tạo 50 checkout history mẫu thành công!");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("❌ Lỗi khi tạo dữ liệu: " + e.getMessage());
+        }
+    }
 }
