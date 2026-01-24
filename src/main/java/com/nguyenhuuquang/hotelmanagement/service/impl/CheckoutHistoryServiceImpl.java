@@ -8,6 +8,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.nguyenhuuquang.hotelmanagement.dto.CheckoutHistoryDTO;
+import com.nguyenhuuquang.hotelmanagement.dto.MonthlyRevenueAnalysisDTO;
+import com.nguyenhuuquang.hotelmanagement.dto.RoomPerformanceDTO;
+import com.nguyenhuuquang.hotelmanagement.dto.VIPCustomerDTO;
 import com.nguyenhuuquang.hotelmanagement.entity.CheckoutHistory;
 import com.nguyenhuuquang.hotelmanagement.exception.ResourceNotFoundException;
 import com.nguyenhuuquang.hotelmanagement.repository.CheckoutHistoryRepository;
@@ -81,6 +84,64 @@ public class CheckoutHistoryServiceImpl implements CheckoutHistoryService {
         historyRepo.deleteById(id);
     }
 
+    @Override
+    public List<MonthlyRevenueAnalysisDTO> getMonthlyRevenueAnalysis(LocalDate startDate, LocalDate endDate) {
+        List<Object[]> results = historyRepo.getMonthlyRevenueAnalysis(startDate, endDate);
+
+        return results.stream()
+                .map(row -> MonthlyRevenueAnalysisDTO.builder()
+                        .year((Integer) row[0])
+                        .month((Integer) row[1])
+                        .roomRevenue((Double) row[2])
+                        .serviceRevenue((Double) row[3])
+                        .totalRevenue((Double) row[4])
+                        .checkoutCount((Long) row[5])
+                        .avgRevenuePerCheckout((Double) row[6])
+                        .avgNightsPerStay((Double) row[7])
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    // 2. TÌM KHÁCH HÀNG VIP
+    @Override
+    public List<VIPCustomerDTO> getVIPCustomers(Long minVisits, Double minSpending) {
+        List<Object[]> results = historyRepo.findVIPCustomers(minVisits, minSpending);
+
+        return results.stream()
+                .map(row -> VIPCustomerDTO.builder()
+                        .customerName((String) row[0])
+                        .phone((String) row[1])
+                        .visitCount((Long) row[2])
+                        .totalSpent((Double) row[3])
+                        .avgSpentPerVisit((Double) row[4])
+                        .totalNights((Long) row[5])
+                        .firstVisit((LocalDate) row[6])
+                        .lastVisit((LocalDate) row[7])
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    // 3. PHÂN TÍCH HIỆU SUẤT PHÒNG
+    @Override
+    public List<RoomPerformanceDTO> getRoomPerformanceAnalysis(LocalDate startDate, LocalDate endDate) {
+        List<Object[]> results = historyRepo.getRoomPerformanceAnalysis(startDate, endDate);
+
+        return results.stream()
+                .map(row -> RoomPerformanceDTO.builder()
+                        .roomNumber((String) row[0])
+                        .totalBookings((Long) row[1])
+                        .totalNights((Long) row[2])
+                        .totalRoomRevenue((Double) row[3])
+                        .totalServiceRevenue((Double) row[4])
+                        .totalRevenue((Double) row[5])
+                        .avgRevenuePerBooking((Double) row[6])
+                        .avgNightsPerBooking((Double) row[7])
+                        .firstCheckout((LocalDate) row[8])
+                        .lastCheckout((LocalDate) row[9])
+                        .build())
+                .collect(Collectors.toList());
+    }
+
     private CheckoutHistoryDTO convertToDTO(CheckoutHistory history) {
         return CheckoutHistoryDTO.builder()
                 .id(history.getId())
@@ -100,4 +161,5 @@ public class CheckoutHistoryServiceImpl implements CheckoutHistoryService {
                 .createdAt(history.getCreatedAt())
                 .build();
     }
+
 }

@@ -17,6 +17,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.nguyenhuuquang.hotelmanagement.dto.CheckoutHistoryDTO;
+import com.nguyenhuuquang.hotelmanagement.dto.MonthlyRevenueAnalysisDTO;
+import com.nguyenhuuquang.hotelmanagement.dto.RoomPerformanceDTO;
+import com.nguyenhuuquang.hotelmanagement.dto.VIPCustomerDTO;
 import com.nguyenhuuquang.hotelmanagement.service.CheckoutHistoryService;
 
 import lombok.RequiredArgsConstructor;
@@ -56,5 +59,26 @@ public class CheckoutHistoryController {
     public ResponseEntity<Void> deleteHistory(@PathVariable Long id) {
         historyService.deleteHistory(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/analytics/monthly-revenue")
+    public ResponseEntity<List<MonthlyRevenueAnalysisDTO>> getMonthlyRevenueAnalysis(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        return ResponseEntity.ok(historyService.getMonthlyRevenueAnalysis(startDate, endDate));
+    }
+
+    @GetMapping("/analytics/vip-customers")
+    public ResponseEntity<List<VIPCustomerDTO>> getVIPCustomers(
+            @RequestParam(defaultValue = "2") Long minVisits,
+            @RequestParam(defaultValue = "1000000") Double minSpending) {
+        return ResponseEntity.ok(historyService.getVIPCustomers(minVisits, minSpending));
+    }
+
+    @GetMapping("/analytics/room-performance")
+    public ResponseEntity<List<RoomPerformanceDTO>> getRoomPerformanceAnalysis(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
+        return ResponseEntity.ok(historyService.getRoomPerformanceAnalysis(startDate, endDate));
     }
 }

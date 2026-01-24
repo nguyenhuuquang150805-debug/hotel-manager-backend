@@ -4,6 +4,9 @@ import java.time.LocalDate;
 import java.util.List;
 
 import com.nguyenhuuquang.hotelmanagement.dto.CheckoutHistoryDTO;
+import com.nguyenhuuquang.hotelmanagement.dto.MonthlyRevenueAnalysisDTO;
+import com.nguyenhuuquang.hotelmanagement.dto.RoomPerformanceDTO;
+import com.nguyenhuuquang.hotelmanagement.dto.VIPCustomerDTO;
 
 public interface CheckoutHistoryService {
     CheckoutHistoryDTO createHistory(CheckoutHistoryDTO historyDTO);
@@ -15,4 +18,10 @@ public interface CheckoutHistoryService {
     List<CheckoutHistoryDTO> getHistoryByDateRange(LocalDate startDate, LocalDate endDate);
 
     void deleteHistory(Long id);
+
+    List<MonthlyRevenueAnalysisDTO> getMonthlyRevenueAnalysis(LocalDate startDate, LocalDate endDate);
+
+    List<VIPCustomerDTO> getVIPCustomers(Long minVisits, Double minSpending);
+
+    List<RoomPerformanceDTO> getRoomPerformanceAnalysis(LocalDate startDate, LocalDate endDate);
 }
