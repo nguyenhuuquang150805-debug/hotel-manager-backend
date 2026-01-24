@@ -89,16 +89,21 @@ public class CheckoutHistoryServiceImpl implements CheckoutHistoryService {
         List<Object[]> results = historyRepo.getMonthlyRevenueAnalysis(startDate, endDate);
 
         return results.stream()
-                .map(row -> MonthlyRevenueAnalysisDTO.builder()
-                        .year((Integer) row[0])
-                        .month((Integer) row[1])
-                        .roomRevenue((Double) row[2])
-                        .serviceRevenue((Double) row[3])
-                        .totalRevenue((Double) row[4])
-                        .checkoutCount((Long) row[5])
-                        .avgRevenuePerCheckout((Double) row[6])
-                        .avgNightsPerStay((Double) row[7])
-                        .build())
+                .map(row -> {
+                    Integer year = row[0] instanceof Integer ? (Integer) row[0] : ((Number) row[0]).intValue();
+                    Integer month = row[1] instanceof Integer ? (Integer) row[1] : ((Number) row[1]).intValue();
+
+                    return MonthlyRevenueAnalysisDTO.builder()
+                            .year(year)
+                            .month(month)
+                            .roomRevenue((Double) row[2])
+                            .serviceRevenue((Double) row[3])
+                            .totalRevenue((Double) row[4])
+                            .checkoutCount((Long) row[5])
+                            .avgRevenuePerCheckout((Double) row[6])
+                            .avgNightsPerStay((Double) row[7])
+                            .build();
+                })
                 .collect(Collectors.toList());
     }
 

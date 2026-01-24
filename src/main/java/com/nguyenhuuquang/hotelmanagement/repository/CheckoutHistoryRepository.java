@@ -18,8 +18,8 @@ public interface CheckoutHistoryRepository extends JpaRepository<CheckoutHistory
     List<CheckoutHistory> findByActualCheckOutBetween(LocalDate startDate, LocalDate endDate);
 
     // 1. PHÂN TÍCH DOANH THU THEO THÁNG
-    @Query("SELECT FUNCTION('YEAR', h.actualCheckOut) as year, " +
-            "FUNCTION('MONTH', h.actualCheckOut) as month, " +
+    @Query("SELECT EXTRACT(YEAR FROM h.actualCheckOut) as year, " +
+            "EXTRACT(MONTH FROM h.actualCheckOut) as month, " +
             "SUM(h.roomAmount) as roomRevenue, " +
             "SUM(h.serviceAmount) as serviceRevenue, " +
             "SUM(h.totalAmount) as totalRevenue, " +
@@ -28,7 +28,7 @@ public interface CheckoutHistoryRepository extends JpaRepository<CheckoutHistory
             "AVG(h.nights) as avgNightsPerStay " +
             "FROM CheckoutHistory h " +
             "WHERE h.actualCheckOut BETWEEN :startDate AND :endDate " +
-            "GROUP BY FUNCTION('YEAR', h.actualCheckOut), FUNCTION('MONTH', h.actualCheckOut) " +
+            "GROUP BY EXTRACT(YEAR FROM h.actualCheckOut), EXTRACT(MONTH FROM h.actualCheckOut) " +
             "ORDER BY year DESC, month DESC")
     List<Object[]> getMonthlyRevenueAnalysis(@Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate);
