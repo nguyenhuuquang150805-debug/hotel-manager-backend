@@ -48,23 +48,21 @@ public class SecurityConfig {
                 .formLogin(form -> form.disable())
 
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/api/auth/**",
-                                "/api/payment/**",
-                                "/error")
-                        .permitAll()
+                        .requestMatchers("/api/auth/**", "/api/payment/**", "/error").permitAll()
+
                         .anyRequest().authenticated())
 
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint((request, response, authException) -> {
                             response.setStatus(401);
                             response.setContentType("application/json");
-                            response.getWriter().write("{\"message\":\"Unauthorized\"}");
+                            response.getWriter()
+                                    .write("{\"message\":\"Vui lòng đăng nhập để thực hiện thao tác này\"}");
                         })
                         .accessDeniedHandler((request, response, accessDeniedException) -> {
                             response.setStatus(403);
                             response.setContentType("application/json");
-                            response.getWriter().write("{\"message\":\"Access Denied\"}");
+                            response.getWriter().write("{\"message\":\"Bạn không có quyền thực hiện thao tác này\"}");
                         }))
 
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
