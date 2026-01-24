@@ -74,7 +74,6 @@ public class PayosService {
             System.out.println("   - Amount: " + amount + " VNĐ");
             System.out.println("   - Description: " + description);
 
-            // Build signature
             Map<String, String> sigParams = new HashMap<>();
             sigParams.put("amount", amount.toString());
             sigParams.put("cancelUrl", cancelUrl);
@@ -87,7 +86,6 @@ public class PayosService {
 
             System.out.println("🔐 Signature: " + signature);
 
-            // Build request body
             Map<String, Object> body = new HashMap<>();
             body.put("orderCode", orderCode);
             body.put("amount", amount);
@@ -99,7 +97,6 @@ public class PayosService {
                 body.put("expiredAt", expiredAt);
             }
 
-            // Build headers
             HttpHeaders headers = new HttpHeaders();
             headers.set("x-client-id", clientId);
             headers.set("x-api-key", apiKey);
@@ -109,7 +106,6 @@ public class PayosService {
 
             System.out.println("🌐 Calling PayOS API...");
 
-            // Call PayOS API
             ResponseEntity<Map> res = rest.postForEntity(
                     "https://api-merchant.payos.vn/v2/payment-requests",
                     entity,
