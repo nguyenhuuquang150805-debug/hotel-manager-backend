@@ -69,8 +69,21 @@ public class CheckoutHistory {
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(length = 50)
+    private String promotionCode;
+
+    @Column(length = 255)
+    private String promotionName;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Double discountAmount = 0.0;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
+        if (discountAmount == null) {
+            discountAmount = 0.0;
+        }
     }
 }

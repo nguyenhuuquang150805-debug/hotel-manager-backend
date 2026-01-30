@@ -28,4 +28,7 @@ public class CheckoutHistoryDTO {
     private Double deposit;
     private String notes;
     private LocalDateTime createdAt;
+    private String promotionCode;
+    private String promotionName;
+    private Double discountAmount;
 }

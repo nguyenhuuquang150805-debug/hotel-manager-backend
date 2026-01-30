@@ -27,8 +27,12 @@ public class CheckoutHistoryServiceImpl implements CheckoutHistoryService {
     @Override
     @Transactional
     public CheckoutHistoryDTO createHistory(CheckoutHistoryDTO historyDTO) {
+        // ✅ TÍNH TOÁN TỔNG TIỀN SAU KHI TRỪ KHUYẾN MÃI
+        Double discountAmount = historyDTO.getDiscountAmount() != null ? historyDTO.getDiscountAmount() : 0.0;
+
         Double calculatedTotal = historyDTO.getRoomAmount()
                 + historyDTO.getServiceAmount()
+                - discountAmount // ✅ TRỪ DISCOUNT
                 - historyDTO.getDeposit();
 
         CheckoutHistory history = CheckoutHistory.builder()
@@ -45,6 +49,10 @@ public class CheckoutHistoryServiceImpl implements CheckoutHistoryService {
                 .totalAmount(calculatedTotal)
                 .deposit(historyDTO.getDeposit())
                 .notes(historyDTO.getNotes())
+                // ✅ THÊM PROMOTION DATA
+                .promotionCode(historyDTO.getPromotionCode())
+                .promotionName(historyDTO.getPromotionName())
+                .discountAmount(discountAmount)
                 .build();
 
         CheckoutHistory saved = historyRepo.save(history);
@@ -107,7 +115,6 @@ public class CheckoutHistoryServiceImpl implements CheckoutHistoryService {
                 .collect(Collectors.toList());
     }
 
-    // 2. TÌM KHÁCH HÀNG VIP
     @Override
     public List<VIPCustomerDTO> getVIPCustomers(Long minVisits, Double minSpending) {
         List<Object[]> results = historyRepo.findVIPCustomers(minVisits, minSpending);
@@ -126,7 +133,6 @@ public class CheckoutHistoryServiceImpl implements CheckoutHistoryService {
                 .collect(Collectors.toList());
     }
 
-    // 3. PHÂN TÍCH HIỆU SUẤT PHÒNG
     @Override
     public List<RoomPerformanceDTO> getRoomPerformanceAnalysis(LocalDate startDate, LocalDate endDate) {
         List<Object[]> results = historyRepo.getRoomPerformanceAnalysis(startDate, endDate);
@@ -164,7 +170,9 @@ public class CheckoutHistoryServiceImpl implements CheckoutHistoryService {
                 .deposit(history.getDeposit())
                 .notes(history.getNotes())
                 .createdAt(history.getCreatedAt())
+                .promotionCode(history.getPromotionCode())
+                .promotionName(history.getPromotionName())
+                .discountAmount(history.getDiscountAmount())
                 .build();
     }
-
 }
