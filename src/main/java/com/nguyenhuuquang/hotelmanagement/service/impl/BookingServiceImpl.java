@@ -16,15 +16,20 @@ import com.nguyenhuuquang.hotelmanagement.dto.BookingWithServicesDTO;
 import com.nguyenhuuquang.hotelmanagement.dto.CreateBookingRequest;
 import com.nguyenhuuquang.hotelmanagement.dto.DashboardStatsDTO;
 import com.nguyenhuuquang.hotelmanagement.entity.Booking;
+import com.nguyenhuuquang.hotelmanagement.entity.BookingPromotion;
+import com.nguyenhuuquang.hotelmanagement.entity.Promotion;
 import com.nguyenhuuquang.hotelmanagement.entity.Room;
 import com.nguyenhuuquang.hotelmanagement.entity.enums.BookingStatus;
 import com.nguyenhuuquang.hotelmanagement.entity.enums.LogType;
 import com.nguyenhuuquang.hotelmanagement.entity.enums.RoomStatus;
 import com.nguyenhuuquang.hotelmanagement.exception.ResourceNotFoundException;
+import com.nguyenhuuquang.hotelmanagement.repository.BookingPromotionRepository;
 import com.nguyenhuuquang.hotelmanagement.repository.BookingRepository;
+import com.nguyenhuuquang.hotelmanagement.repository.PromotionRepository;
 import com.nguyenhuuquang.hotelmanagement.repository.RoomRepository;
 import com.nguyenhuuquang.hotelmanagement.repository.ServiceRepository;
 import com.nguyenhuuquang.hotelmanagement.service.BookingService;
+import com.nguyenhuuquang.hotelmanagement.service.PromotionService;
 import com.nguyenhuuquang.hotelmanagement.service.SystemLogService;
 
 import lombok.RequiredArgsConstructor;
@@ -37,6 +42,10 @@ public class BookingServiceImpl implements BookingService {
         private final RoomRepository roomRepo;
         private final SystemLogService logService;
         private final ServiceRepository serviceRepo;
+
+        private final PromotionRepository promotionRepo;
+        private final BookingPromotionRepository bookingPromotionRepo;
+        private final PromotionService promotionService;
 
         @Override
         @Transactional
@@ -59,6 +68,7 @@ public class BookingServiceImpl implements BookingService {
 
                 BigDecimal roomAmount = room.getPrice().multiply(BigDecimal.valueOf(nights));
                 BigDecimal serviceAmount = BigDecimal.ZERO;
+                BigDecimal discountAmount = BigDecimal.ZERO;
                 BigDecimal totalAmount = roomAmount.add(serviceAmount);
 
                 BigDecimal deposit = request.getDeposit() != null ? request.getDeposit() : BigDecimal.ZERO;
@@ -75,6 +85,7 @@ public class BookingServiceImpl implements BookingService {
                                 .numberOfGuests(1)
                                 .roomAmount(roomAmount)
                                 .serviceAmount(serviceAmount)
+                                .discountAmount(discountAmount)
                                 .totalAmount(totalAmount)
                                 .deposit(deposit)
                                 .paidAmount(BigDecimal.ZERO)
@@ -84,6 +95,43 @@ public class BookingServiceImpl implements BookingService {
                                 .build();
 
                 booking = bookingRepo.save(booking);
+
+                // ✨ Áp dụng promotion nếu có
+                if (request.getPromotionCode() != null && !request.getPromotionCode().trim().isEmpty()) {
+                        try {
+                                Promotion promotion = promotionRepo.findValidPromotionByCode(
+                                                request.getPromotionCode().toUpperCase(),
+                                                LocalDate.now())
+                                                .orElseThrow(() -> new IllegalArgumentException(
+                                                                "Mã khuyến mãi không hợp lệ hoặc đã hết hạn"));
+
+                                BigDecimal discount = promotionService.calculateDiscount(
+                                                request.getPromotionCode(),
+                                                booking.getTotalAmount());
+
+                                BookingPromotion bookingPromotion = BookingPromotion.builder()
+                                                .promotion(promotion)
+                                                .discountAmount(discount)
+                                                .promotionCode(promotion.getCode())
+                                                .promotionName(promotion.getName())
+                                                .build();
+
+                                booking.addBookingPromotion(bookingPromotion);
+                                promotion.incrementUsage();
+                                promotionRepo.save(promotion);
+
+                                booking.recalculateTotalAmount();
+                                booking = bookingRepo.save(booking);
+
+                                logService.log(LogType.SUCCESS, "Áp dụng mã giảm giá", "Admin",
+                                                String.format("Đã áp dụng mã %s cho booking #%d",
+                                                                promotion.getCode(), booking.getId()),
+                                                String.format("Giảm giá: %s", discount));
+                        } catch (Exception e) {
+                                logService.log(LogType.WARNING, "Lỗi áp dụng mã giảm giá", "Admin",
+                                                e.getMessage());
+                        }
+                }
 
                 if (!hasCheckedInBooking && room.getStatus() == RoomStatus.AVAILABLE) {
                         room.setStatus(RoomStatus.RESERVED);
@@ -97,8 +145,9 @@ public class BookingServiceImpl implements BookingService {
                 logService.log(LogType.SUCCESS, "Tạo đặt phòng", "Admin",
                                 String.format("Đã tạo đặt phòng %s cho khách %s",
                                                 room.getRoomNumber(), request.getCustomerName()),
-                                String.format("Phòng %s, %d đêm, tiền phòng %s, tổng tiền %s, trạng thái: %s",
-                                                room.getRoomNumber(), nights, roomAmount, totalAmount, statusNote));
+                                String.format("Phòng %s, %d đêm, tiền phòng %s, giảm giá %s, tổng tiền %s, trạng thái: %s",
+                                                room.getRoomNumber(), nights, roomAmount,
+                                                booking.getDiscountAmount(), booking.getTotalAmount(), statusNote));
 
                 return convertToDTO(booking);
         }
@@ -140,6 +189,104 @@ public class BookingServiceImpl implements BookingService {
                                                 quantity, service.getName(), booking.getRoom().getRoomNumber()),
                                 String.format("Giá trị thêm: %s. Tổng hóa đơn mới: %s",
                                                 totalPrice, booking.getTotalAmount()));
+
+                return convertToDTO(booking);
+        }
+
+        @Override
+        @Transactional
+        public BookingDTO applyPromotionToBooking(Long bookingId, String promotionCode) {
+                Booking booking = bookingRepo.findById(bookingId)
+                                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đặt phòng"));
+
+                if (booking.getStatus() == BookingStatus.COMPLETED ||
+                                booking.getStatus() == BookingStatus.CANCELLED) {
+                        throw new IllegalStateException(
+                                        "Không thể áp dụng mã giảm giá cho đặt phòng đã hoàn thành hoặc đã hủy");
+                }
+
+                // Kiểm tra xem booking đã có promotion này chưa
+                boolean hasPromotion = booking.getBookingPromotions().stream()
+                                .anyMatch(bp -> bp.getPromotionCode().equalsIgnoreCase(promotionCode));
+
+                if (hasPromotion) {
+                        throw new IllegalArgumentException("Mã giảm giá này đã được áp dụng cho booking này");
+                }
+
+                Promotion promotion = promotionRepo.findValidPromotionByCode(
+                                promotionCode.toUpperCase(),
+                                LocalDate.now())
+                                .orElseThrow(() -> new IllegalArgumentException(
+                                                "Mã khuyến mãi không hợp lệ hoặc đã hết hạn"));
+
+                // Tính discount dựa trên tổng tiền hiện tại (đã bao gồm dịch vụ nhưng chưa trừ
+                // discount)
+                BigDecimal currentSubtotal = booking.getRoomAmount().add(booking.getServiceAmount());
+
+                BigDecimal discount = promotionService.calculateDiscount(
+                                promotionCode,
+                                currentSubtotal);
+
+                BookingPromotion bookingPromotion = BookingPromotion.builder()
+                                .promotion(promotion)
+                                .discountAmount(discount)
+                                .promotionCode(promotion.getCode())
+                                .promotionName(promotion.getName())
+                                .build();
+
+                booking.addBookingPromotion(bookingPromotion);
+                promotion.incrementUsage();
+                promotionRepo.save(promotion);
+
+                booking.recalculateTotalAmount();
+                booking = bookingRepo.save(booking);
+
+                logService.log(LogType.SUCCESS, "Áp dụng mã giảm giá", "Admin",
+                                String.format("Đã áp dụng mã %s cho booking #%d",
+                                                promotion.getCode(), booking.getId()),
+                                String.format("Giảm giá: %s. Tổng tiền mới: %s",
+                                                discount, booking.getTotalAmount()));
+
+                return convertToDTO(booking);
+        }
+
+        @Override
+        @Transactional
+        public BookingDTO removePromotionFromBooking(Long bookingId, Long promotionId) {
+                Booking booking = bookingRepo.findById(bookingId)
+                                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy đặt phòng"));
+
+                if (booking.getStatus() == BookingStatus.COMPLETED ||
+                                booking.getStatus() == BookingStatus.CANCELLED) {
+                        throw new IllegalStateException(
+                                        "Không thể xóa mã giảm giá cho đặt phòng đã hoàn thành hoặc đã hủy");
+                }
+
+                BookingPromotion bookingPromotion = booking.getBookingPromotions().stream()
+                                .filter(bp -> bp.getId().equals(promotionId))
+                                .findFirst()
+                                .orElseThrow(() -> new ResourceNotFoundException(
+                                                "Không tìm thấy mã giảm giá trong booking này"));
+
+                String promotionCode = bookingPromotion.getPromotionCode();
+                BigDecimal discountAmount = bookingPromotion.getDiscountAmount();
+
+                // Giảm usage count của promotion
+                Promotion promotion = bookingPromotion.getPromotion();
+                if (promotion.getUsedCount() > 0) {
+                        promotion.setUsedCount(promotion.getUsedCount() - 1);
+                        promotionRepo.save(promotion);
+                }
+
+                booking.removeBookingPromotion(bookingPromotion);
+                booking.recalculateTotalAmount();
+                booking = bookingRepo.save(booking);
+
+                logService.log(LogType.INFO, "Xóa mã giảm giá", "Admin",
+                                String.format("Đã xóa mã %s khỏi booking #%d",
+                                                promotionCode, booking.getId()),
+                                String.format("Hoàn lại giảm giá: %s. Tổng tiền mới: %s",
+                                                discountAmount, booking.getTotalAmount()));
 
                 return convertToDTO(booking);
         }
@@ -404,6 +551,16 @@ public class BookingServiceImpl implements BookingService {
         }
 
         private BookingDTO convertToDTO(Booking booking) {
+                // Lấy promotion đầu tiên nếu có
+                String promotionCode = null;
+                String promotionName = null;
+
+                if (booking.getBookingPromotions() != null && !booking.getBookingPromotions().isEmpty()) {
+                        BookingPromotion firstPromotion = booking.getBookingPromotions().get(0);
+                        promotionCode = firstPromotion.getPromotionCode();
+                        promotionName = firstPromotion.getPromotionName();
+                }
+
                 return BookingDTO.builder()
                                 .id(booking.getId())
                                 .roomId(booking.getRoom().getId())
@@ -413,6 +570,11 @@ public class BookingServiceImpl implements BookingService {
                                 .checkIn(booking.getCheckIn())
                                 .checkOut(booking.getCheckOut())
                                 .nights(booking.getNights())
+                                .roomAmount(booking.getRoomAmount())
+                                .serviceAmount(booking.getServiceAmount())
+                                .discountAmount(booking.getDiscountAmount())
+                                .promotionCode(promotionCode)
+                                .promotionName(promotionName)
                                 .totalAmount(booking.getTotalAmount())
                                 .deposit(booking.getDeposit())
                                 .status(booking.getStatus().name())
@@ -438,6 +600,19 @@ public class BookingServiceImpl implements BookingService {
                                                 .build())
                                 .collect(Collectors.toList());
 
+                // ✨ Thêm danh sách promotions
+                List<BookingWithServicesDTO.BookingPromotionItemDTO> promotionItems = booking.getBookingPromotions()
+                                .stream()
+                                .map(bp -> BookingWithServicesDTO.BookingPromotionItemDTO.builder()
+                                                .id(bp.getId())
+                                                .promotionId(bp.getPromotion().getId())
+                                                .promotionCode(bp.getPromotionCode())
+                                                .promotionName(bp.getPromotionName())
+                                                .discountAmount(bp.getDiscountAmount())
+                                                .appliedAt(bp.getAppliedAt())
+                                                .build())
+                                .collect(Collectors.toList());
+
                 return BookingWithServicesDTO.builder()
                                 .id(booking.getId())
                                 .roomId(booking.getRoom().getId())
@@ -449,12 +624,14 @@ public class BookingServiceImpl implements BookingService {
                                 .nights(booking.getNights())
                                 .roomAmount(booking.getRoomAmount())
                                 .serviceAmount(booking.getServiceAmount())
+                                .discountAmount(booking.getDiscountAmount())
                                 .totalAmount(booking.getTotalAmount())
                                 .deposit(booking.getDeposit())
                                 .status(booking.getStatus().name())
                                 .notes(booking.getNotes())
                                 .createdAt(booking.getCreatedAt())
                                 .services(serviceItems)
+                                .promotions(promotionItems)
                                 .build();
         }
 

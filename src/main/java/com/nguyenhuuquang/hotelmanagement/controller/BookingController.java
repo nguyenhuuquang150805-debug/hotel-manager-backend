@@ -6,6 +6,7 @@ import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -44,6 +45,21 @@ public class BookingController {
             @RequestParam Long serviceId,
             @RequestParam Integer quantity) {
         return ResponseEntity.ok(bookingService.addServiceToBooking(id, serviceId, quantity));
+    }
+
+    // ✨ Thêm promotion endpoints
+    @PostMapping("/{id}/promotions")
+    public ResponseEntity<BookingDTO> applyPromotion(
+            @PathVariable Long id,
+            @RequestParam String promotionCode) {
+        return ResponseEntity.ok(bookingService.applyPromotionToBooking(id, promotionCode));
+    }
+
+    @DeleteMapping("/{bookingId}/promotions/{promotionId}")
+    public ResponseEntity<BookingDTO> removePromotion(
+            @PathVariable Long bookingId,
+            @PathVariable Long promotionId) {
+        return ResponseEntity.ok(bookingService.removePromotionFromBooking(bookingId, promotionId));
     }
 
     @GetMapping("/{id}/details")

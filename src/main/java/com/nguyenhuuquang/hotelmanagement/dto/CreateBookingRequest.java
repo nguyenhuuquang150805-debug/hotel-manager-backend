@@ -18,4 +18,6 @@ public class CreateBookingRequest {
     private LocalDate checkOut;
     private BigDecimal deposit;
     private String notes;
+
+    private String promotionCode;
 }

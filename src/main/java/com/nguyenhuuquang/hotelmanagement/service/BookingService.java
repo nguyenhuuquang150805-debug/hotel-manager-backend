@@ -37,4 +37,8 @@ public interface BookingService {
     BookingDTO addServiceToBooking(Long bookingId, Long serviceId, Integer quantity);
 
     BookingDTO changeRoom(Long bookingId, Long newRoomId);
+
+    BookingDTO applyPromotionToBooking(Long bookingId, String promotionCode);
+
+    BookingDTO removePromotionFromBooking(Long bookingId, Long promotionId);
 }

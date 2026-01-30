@@ -77,6 +77,10 @@ public class Booking {
     @Column(name = "service_amount")
     private BigDecimal serviceAmount;
 
+    // ✨ Thêm các field mới cho promotion
+    @Column(name = "discount_amount")
+    private BigDecimal discountAmount;
+
     @Column(name = "total_amount", nullable = false)
     private BigDecimal totalAmount;
 
@@ -121,6 +125,10 @@ public class Booking {
     @Builder.Default
     private List<BookingService> bookingServices = new ArrayList<>();
 
+    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<BookingPromotion> bookingPromotions = new ArrayList<>();
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -134,6 +142,9 @@ public class Booking {
         }
         if (serviceAmount == null) {
             serviceAmount = BigDecimal.ZERO;
+        }
+        if (discountAmount == null) {
+            discountAmount = BigDecimal.ZERO;
         }
         if (numberOfGuests == null) {
             numberOfGuests = 1;
@@ -155,7 +166,22 @@ public class Booking {
 
         this.serviceAmount = calculatedServiceAmount;
 
-        this.totalAmount = this.roomAmount.add(this.serviceAmount);
+        BigDecimal subtotal = this.roomAmount.add(this.serviceAmount);
+
+        BigDecimal calculatedDiscountAmount = BigDecimal.ZERO;
+        if (bookingPromotions != null && !bookingPromotions.isEmpty()) {
+            calculatedDiscountAmount = bookingPromotions.stream()
+                    .map(BookingPromotion::getDiscountAmount)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
+
+        this.discountAmount = calculatedDiscountAmount;
+
+        this.totalAmount = subtotal.subtract(this.discountAmount);
+
+        if (this.totalAmount.compareTo(BigDecimal.ZERO) < 0) {
+            this.totalAmount = BigDecimal.ZERO;
+        }
     }
 
     public void addBookingService(BookingService bs) {
@@ -168,6 +194,19 @@ public class Booking {
     public void removeBookingService(BookingService bookingService) {
         bookingServices.remove(bookingService);
         bookingService.setBooking(null);
+        recalculateTotalAmount();
+    }
+
+    public void addBookingPromotion(BookingPromotion bp) {
+        if (this.bookingPromotions == null)
+            this.bookingPromotions = new ArrayList<>();
+        this.bookingPromotions.add(bp);
+        bp.setBooking(this);
+    }
+
+    public void removeBookingPromotion(BookingPromotion bookingPromotion) {
+        bookingPromotions.remove(bookingPromotion);
+        bookingPromotion.setBooking(null);
         recalculateTotalAmount();
     }
 }

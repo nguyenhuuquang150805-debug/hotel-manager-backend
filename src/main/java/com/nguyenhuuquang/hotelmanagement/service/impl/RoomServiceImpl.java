@@ -23,7 +23,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class RoomServiceImpl implements RoomService {
 
-        private final RoomRepository roomRepo;
+        private final RoomRepository roomRepo; 
         private final RoomTypeRepository roomTypeRepo;
         private final SystemLogService logService;
 

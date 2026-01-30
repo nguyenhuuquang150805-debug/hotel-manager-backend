@@ -25,12 +25,19 @@ public class BookingWithServicesDTO {
     private Integer nights;
     private BigDecimal roomAmount;
     private BigDecimal serviceAmount;
+
+    // ✨ Thêm field cho discount và promotion
+    private BigDecimal discountAmount;
     private BigDecimal totalAmount;
     private BigDecimal deposit;
     private String status;
     private String notes;
     private LocalDateTime createdAt;
+
     private List<BookingServiceItemDTO> services;
+
+    // ✨ Thêm danh sách promotions
+    private List<BookingPromotionItemDTO> promotions;
 
     @Data
     @Builder
@@ -43,5 +50,18 @@ public class BookingWithServicesDTO {
         private Integer quantity;
         private BigDecimal price;
         private BigDecimal totalPrice;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class BookingPromotionItemDTO {
+        private Long id;
+        private Long promotionId;
+        private String promotionCode;
+        private String promotionName;
+        private BigDecimal discountAmount;
+        private LocalDateTime appliedAt;
     }
 }

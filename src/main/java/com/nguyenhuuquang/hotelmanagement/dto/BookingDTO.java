@@ -22,6 +22,13 @@ public class BookingDTO {
     private LocalDate checkIn;
     private LocalDate checkOut;
     private Integer nights;
+    private BigDecimal roomAmount;
+    private BigDecimal serviceAmount;
+
+    private BigDecimal discountAmount;
+    private String promotionCode;
+    private String promotionName;
+
     private BigDecimal totalAmount;
     private BigDecimal deposit;
     private String status;
