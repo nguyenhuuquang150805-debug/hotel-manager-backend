@@ -27,13 +27,12 @@ public class CheckoutHistoryServiceImpl implements CheckoutHistoryService {
     @Override
     @Transactional
     public CheckoutHistoryDTO createHistory(CheckoutHistoryDTO historyDTO) {
-        // ✅ TÍNH TOÁN TỔNG TIỀN SAU KHI TRỪ KHUYẾN MÃI
+
         Double discountAmount = historyDTO.getDiscountAmount() != null ? historyDTO.getDiscountAmount() : 0.0;
 
         Double calculatedTotal = historyDTO.getRoomAmount()
                 + historyDTO.getServiceAmount()
-                - discountAmount // ✅ TRỪ DISCOUNT
-                - historyDTO.getDeposit();
+                - discountAmount;
 
         CheckoutHistory history = CheckoutHistory.builder()
                 .bookingId(historyDTO.getBookingId())
@@ -49,7 +48,6 @@ public class CheckoutHistoryServiceImpl implements CheckoutHistoryService {
                 .totalAmount(calculatedTotal)
                 .deposit(historyDTO.getDeposit())
                 .notes(historyDTO.getNotes())
-                // ✅ THÊM PROMOTION DATA
                 .promotionCode(historyDTO.getPromotionCode())
                 .promotionName(historyDTO.getPromotionName())
                 .discountAmount(discountAmount)
