@@ -93,23 +93,54 @@ public class TransactionController {
 
     private LocalDate[] calculateDateRange(String period) {
         LocalDate now = LocalDate.now();
-        LocalDate start, end = now;
+        LocalDate start, end;
 
         switch (period.toLowerCase()) {
+            case "yesterday":
+                start = now.minusDays(1);
+                end = now.minusDays(1);
+                break;
+
             case "day":
                 start = now;
+                end = now;
                 break;
+
+            case "last_week":
+                LocalDate lastWeekEnd = now.minusDays(now.getDayOfWeek().getValue());
+                start = lastWeekEnd.minusDays(6);
+                end = lastWeekEnd;
+                break;
+
             case "week":
                 start = now.minusDays(now.getDayOfWeek().getValue() - 1);
+                end = now;
                 break;
+
+            case "last_month":
+                LocalDate lastMonthEnd = now.with(TemporalAdjusters.firstDayOfMonth()).minusDays(1);
+                start = lastMonthEnd.with(TemporalAdjusters.firstDayOfMonth());
+                end = lastMonthEnd;
+                break;
+
             case "month":
                 start = now.with(TemporalAdjusters.firstDayOfMonth());
+                end = now;
                 break;
+
+            case "last_year":
+                start = LocalDate.of(now.getYear() - 1, 1, 1);
+                end = LocalDate.of(now.getYear() - 1, 12, 31);
+                break;
+
             case "year":
                 start = now.with(TemporalAdjusters.firstDayOfYear());
+                end = now;
                 break;
+
             default:
                 start = now.with(TemporalAdjusters.firstDayOfMonth());
+                end = now;
         }
 
         return new LocalDate[] { start, end };
