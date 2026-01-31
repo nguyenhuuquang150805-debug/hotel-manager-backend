@@ -56,10 +56,8 @@ public class ChatbotService {
         try {
             log.info("📤 Sending message to Gemini AI: {}", request.getMessage());
 
-            // 🔥 LẤY CONTEXT TỪ DATABASE
             String systemContext = buildSystemContext();
 
-            // Tạo prompt với context
             String fullPrompt = systemContext + "\n\n" +
                     "Câu hỏi của khách: " + request.getMessage() + "\n\n" +
                     "Hãy trả lời dựa trên thông tin hệ thống ở trên. Nếu không có thông tin, hãy nói là bạn sẽ kiểm tra và liên hệ lại.";
@@ -89,17 +87,12 @@ public class ChatbotService {
         }
     }
 
-    /**
-     * 🔥 BUILD SYSTEM CONTEXT FROM DATABASE
-     * Hàm này lấy thông tin từ database để cung cấp cho AI
-     */
     private String buildSystemContext() {
         StringBuilder context = new StringBuilder();
 
         context.append("=== THÔNG TIN HỆ THỐNG QUẢN LY KHÁCH SẠN ===\n\n");
 
         try {
-            // 1. THÔNG TIN PHÒNG TRỐNG
             List<Room> availableRooms = roomRepository.findByStatus(
                     com.nguyenhuuquang.hotelmanagement.entity.enums.RoomStatus.AVAILABLE);
             context.append("📊 PHÒNG TRỐNG HIỆN TẠI:\n");
@@ -119,11 +112,9 @@ public class ChatbotService {
         }
 
         try {
-            // 2. THÔNG TIN LOẠI PHÒNG
             List<RoomType> roomTypes = roomTypeRepository.findAll();
             context.append("🏨 CÁC LOẠI PHÒNG:\n");
             for (RoomType type : roomTypes) {
-                // Sử dụng các method có sẵn trong RoomType entity của bạn
                 context.append(String.format("- %s: %,.0f VNĐ/đêm - %s\n",
                         type.getName(),
                         type.getBasePrice(),
@@ -135,9 +126,7 @@ public class ChatbotService {
         }
 
         try {
-            // 3. KHUYẾN MÃI ĐANG HOẠT ĐỘNG
             LocalDate today = LocalDate.now();
-            // Sử dụng method findByActive từ PromotionRepository
             List<Promotion> activePromotions = promotionRepository.findByActive(true).stream()
                     .filter(p -> (p.getStartDate() == null || !p.getStartDate().isAfter(today)) &&
                             (p.getEndDate() == null || !p.getEndDate().isBefore(today)))
@@ -148,7 +137,6 @@ public class ChatbotService {
                 context.append("- Hiện tại không có chương trình khuyến mãi.\n");
             } else {
                 for (Promotion promo : activePromotions) {
-                    // Sử dụng các method có sẵn trong Promotion entity
                     String discountInfo = "";
                     if (promo.getType() != null && promo.getValue() != null) {
                         if (promo.getType().toString().equals("PERCENTAGE")) {
@@ -171,7 +159,6 @@ public class ChatbotService {
         }
 
         try {
-            // 4. THỐNG KÊ BOOKING
             LocalDate today = LocalDate.now();
             List<Booking> todayCheckIns = bookingRepository.findAll().stream()
                     .filter(b -> b.getCheckIn() != null && b.getCheckIn().equals(today))
@@ -189,7 +176,6 @@ public class ChatbotService {
             log.warn("⚠️ Error loading booking statistics: {}", e.getMessage());
         }
 
-        // 5. HƯỚNG DẪN TRẢ LỜI
         context.append("=== HƯỚNG DẪN TRẢ LỜI ===\n");
         context.append("- Bạn là trợ lý AI thông minh cho hệ thống quản lý khách sạn.\n");
         context.append("- Trả lời dựa trên thông tin thực tế từ hệ thống ở trên.\n");
@@ -207,7 +193,6 @@ public class ChatbotService {
             String url = geminiApiUrl + "?key=" + geminiApiKey;
             log.info("🌐 Calling Gemini API");
 
-            // Build request body
             Map<String, Object> requestBody = new HashMap<>();
             List<Map<String, Object>> contents = new ArrayList<>();
             Map<String, Object> content = new HashMap<>();
@@ -219,13 +204,11 @@ public class ChatbotService {
             contents.add(content);
             requestBody.put("contents", contents);
 
-            // Set headers
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
-            // Make API call
             ResponseEntity<Map> response = restTemplate.exchange(
                     url,
                     HttpMethod.POST,
@@ -234,7 +217,6 @@ public class ChatbotService {
 
             log.info("✅ Gemini API responded with status: {}", response.getStatusCode());
 
-            // Parse response
             Map<String, Object> responseBody = response.getBody();
             if (responseBody != null && responseBody.containsKey("candidates")) {
                 List<Map<String, Object>> candidates = (List<Map<String, Object>>) responseBody.get("candidates");
