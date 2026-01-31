@@ -1,9 +1,11 @@
 package com.nguyenhuuquang.hotelmanagement.service;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -18,8 +20,16 @@ import org.springframework.web.client.RestTemplate;
 
 import com.nguyenhuuquang.hotelmanagement.dto.ChatRequest;
 import com.nguyenhuuquang.hotelmanagement.dto.ChatResponse;
+import com.nguyenhuuquang.hotelmanagement.entity.Booking;
 import com.nguyenhuuquang.hotelmanagement.entity.ChatMessage;
+import com.nguyenhuuquang.hotelmanagement.entity.Promotion;
+import com.nguyenhuuquang.hotelmanagement.entity.Room;
+import com.nguyenhuuquang.hotelmanagement.entity.RoomType;
+import com.nguyenhuuquang.hotelmanagement.repository.BookingRepository;
 import com.nguyenhuuquang.hotelmanagement.repository.ChatMessageRepository;
+import com.nguyenhuuquang.hotelmanagement.repository.PromotionRepository;
+import com.nguyenhuuquang.hotelmanagement.repository.RoomRepository;
+import com.nguyenhuuquang.hotelmanagement.repository.RoomTypeRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +40,10 @@ import lombok.extern.slf4j.Slf4j;
 public class ChatbotService {
 
     private final ChatMessageRepository chatMessageRepository;
+    private final RoomRepository roomRepository;
+    private final RoomTypeRepository roomTypeRepository;
+    private final BookingRepository bookingRepository;
+    private final PromotionRepository promotionRepository;
     private final RestTemplate restTemplate = new RestTemplate();
 
     @Value("${gemini.api.key}")
@@ -41,16 +55,16 @@ public class ChatbotService {
     public ChatResponse sendMessage(ChatRequest request) {
         try {
             log.info("📤 Sending message to Gemini AI: {}", request.getMessage());
-            log.info("🔧 Gemini API URL: {}", geminiApiUrl);
-            log.info("🔑 API Key length: {}", geminiApiKey != null ? geminiApiKey.length() : "null");
 
-            String contextPrompt = "Bạn là trợ lý AI thông minh cho hệ thống quản lý khách sạn. " +
-                    "Hãy trả lời câu hỏi của người dùng một cách chuyên nghiệp, thân thiện và hữu ích. " +
-                    "Nếu câu hỏi liên quan đến đặt phòng, thanh toán, dịch vụ khách sạn, hãy cung cấp thông tin chi tiết.\n\n"
-                    +
-                    "Câu hỏi: " + request.getMessage();
+            // 🔥 LẤY CONTEXT TỪ DATABASE
+            String systemContext = buildSystemContext();
 
-            String aiResponse = callGeminiAPI(contextPrompt);
+            // Tạo prompt với context
+            String fullPrompt = systemContext + "\n\n" +
+                    "Câu hỏi của khách: " + request.getMessage() + "\n\n" +
+                    "Hãy trả lời dựa trên thông tin hệ thống ở trên. Nếu không có thông tin, hãy nói là bạn sẽ kiểm tra và liên hệ lại.";
+
+            String aiResponse = callGeminiAPI(fullPrompt);
 
             ChatMessage chatMessage = ChatMessage.builder()
                     .userMessage(request.getMessage())
@@ -75,13 +89,125 @@ public class ChatbotService {
         }
     }
 
+    /**
+     * 🔥 BUILD SYSTEM CONTEXT FROM DATABASE
+     * Hàm này lấy thông tin từ database để cung cấp cho AI
+     */
+    private String buildSystemContext() {
+        StringBuilder context = new StringBuilder();
+
+        context.append("=== THÔNG TIN HỆ THỐNG QUẢN LY KHÁCH SẠN ===\n\n");
+
+        try {
+            // 1. THÔNG TIN PHÒNG TRỐNG
+            List<Room> availableRooms = roomRepository.findByStatus(
+                    com.nguyenhuuquang.hotelmanagement.entity.enums.RoomStatus.AVAILABLE);
+            context.append("📊 PHÒNG TRỐNG HIỆN TẠI:\n");
+            if (availableRooms.isEmpty()) {
+                context.append("- Hiện tại không có phòng trống.\n");
+            } else {
+                for (Room room : availableRooms) {
+                    context.append(String.format("- Phòng %s (Loại: %s, Giá: %,.0f VNĐ/đêm)\n",
+                            room.getRoomNumber(),
+                            room.getRoomType() != null ? room.getRoomType().getName() : "N/A",
+                            room.getPrice()));
+                }
+            }
+            context.append("\n");
+        } catch (Exception e) {
+            log.warn("⚠️ Error loading available rooms: {}", e.getMessage());
+        }
+
+        try {
+            // 2. THÔNG TIN LOẠI PHÒNG
+            List<RoomType> roomTypes = roomTypeRepository.findAll();
+            context.append("🏨 CÁC LOẠI PHÒNG:\n");
+            for (RoomType type : roomTypes) {
+                // Sử dụng các method có sẵn trong RoomType entity của bạn
+                context.append(String.format("- %s: %,.0f VNĐ/đêm - %s\n",
+                        type.getName(),
+                        type.getBasePrice(),
+                        type.getDescription() != null ? type.getDescription() : ""));
+            }
+            context.append("\n");
+        } catch (Exception e) {
+            log.warn("⚠️ Error loading room types: {}", e.getMessage());
+        }
+
+        try {
+            // 3. KHUYẾN MÃI ĐANG HOẠT ĐỘNG
+            LocalDate today = LocalDate.now();
+            // Sử dụng method findByActive từ PromotionRepository
+            List<Promotion> activePromotions = promotionRepository.findByActive(true).stream()
+                    .filter(p -> (p.getStartDate() == null || !p.getStartDate().isAfter(today)) &&
+                            (p.getEndDate() == null || !p.getEndDate().isBefore(today)))
+                    .collect(Collectors.toList());
+
+            context.append("🎁 KHUYẾN MÃI ĐANG ÁP DỤNG:\n");
+            if (activePromotions.isEmpty()) {
+                context.append("- Hiện tại không có chương trình khuyến mãi.\n");
+            } else {
+                for (Promotion promo : activePromotions) {
+                    // Sử dụng các method có sẵn trong Promotion entity
+                    String discountInfo = "";
+                    if (promo.getType() != null && promo.getValue() != null) {
+                        if (promo.getType().toString().equals("PERCENTAGE")) {
+                            discountInfo = promo.getValue() + "%";
+                        } else {
+                            discountInfo = String.format("%,.0f VNĐ", promo.getValue());
+                        }
+                    }
+
+                    context.append(String.format("- %s (Mã: %s): Giảm %s - %s\n",
+                            promo.getName(),
+                            promo.getCode(),
+                            discountInfo,
+                            promo.getDescription() != null ? promo.getDescription() : ""));
+                }
+            }
+            context.append("\n");
+        } catch (Exception e) {
+            log.warn("⚠️ Error loading promotions: {}", e.getMessage());
+        }
+
+        try {
+            // 4. THỐNG KÊ BOOKING
+            LocalDate today = LocalDate.now();
+            List<Booking> todayCheckIns = bookingRepository.findAll().stream()
+                    .filter(b -> b.getCheckIn() != null && b.getCheckIn().equals(today))
+                    .collect(Collectors.toList());
+
+            List<Booking> todayCheckOuts = bookingRepository.findAll().stream()
+                    .filter(b -> b.getCheckOut() != null && b.getCheckOut().equals(today))
+                    .collect(Collectors.toList());
+
+            context.append("📅 THỐNG KÊ HÔM NAY:\n");
+            context.append(String.format("- Số lượng khách check-in: %d\n", todayCheckIns.size()));
+            context.append(String.format("- Số lượng khách check-out: %d\n", todayCheckOuts.size()));
+            context.append("\n");
+        } catch (Exception e) {
+            log.warn("⚠️ Error loading booking statistics: {}", e.getMessage());
+        }
+
+        // 5. HƯỚNG DẪN TRẢ LỜI
+        context.append("=== HƯỚNG DẪN TRẢ LỜI ===\n");
+        context.append("- Bạn là trợ lý AI thông minh cho hệ thống quản lý khách sạn.\n");
+        context.append("- Trả lời dựa trên thông tin thực tế từ hệ thống ở trên.\n");
+        context.append("- Nếu khách hỏi về phòng trống, giá phòng, khuyến mãi -> dùng thông tin ở trên.\n");
+        context.append("- Nếu khách muốn đặt phòng -> hướng dẫn họ liên hệ lễ tân hoặc đặt qua app.\n");
+        context.append("- Trả lời chuyên nghiệp, thân thiện và hữu ích.\n");
+        context.append("- KHÔNG đưa ra thông tin không có trong hệ thống.\n\n");
+
+        return context.toString();
+    }
+
+    @SuppressWarnings("unchecked")
     private String callGeminiAPI(String prompt) {
         try {
-            // Construct URL
             String url = geminiApiUrl + "?key=" + geminiApiKey;
-            log.info("🌐 Calling Gemini API at: {}", url.replaceAll("key=.*", "key=***"));
+            log.info("🌐 Calling Gemini API");
 
-            // Build request body according to Gemini API format
+            // Build request body
             Map<String, Object> requestBody = new HashMap<>();
             List<Map<String, Object>> contents = new ArrayList<>();
             Map<String, Object> content = new HashMap<>();
@@ -92,8 +218,6 @@ public class ChatbotService {
             content.put("parts", parts);
             contents.add(content);
             requestBody.put("contents", contents);
-
-            log.info("📝 Request body prepared");
 
             // Set headers
             HttpHeaders headers = new HttpHeaders();
@@ -132,14 +256,20 @@ public class ChatbotService {
         } catch (HttpClientErrorException e) {
             log.error("❌ Gemini API Client Error (4xx): Status={}, Body={}",
                     e.getStatusCode(), e.getResponseBodyAsString());
-            if (e.getStatusCode().value() == 400) {
-                return "Yêu cầu không hợp lệ. Vui lòng kiểm tra lại câu hỏi.";
-            } else if (e.getStatusCode().value() == 403) {
-                return "API key không hợp lệ hoặc đã hết hạn. Vui lòng liên hệ quản trị viên.";
-            } else if (e.getStatusCode().value() == 429) {
-                return "Đã vượt quá giới hạn số lượng yêu cầu. Vui lòng thử lại sau.";
+
+            int statusCode = e.getStatusCode().value();
+            switch (statusCode) {
+                case 400:
+                    return "Yêu cầu không hợp lệ. Vui lòng kiểm tra lại câu hỏi.";
+                case 403:
+                    return "API key không hợp lệ hoặc đã hết hạn. Vui lòng liên hệ quản trị viên.";
+                case 404:
+                    return "Model AI không tồn tại. Vui lòng kiểm tra cấu hình.";
+                case 429:
+                    return "Đã vượt quá giới hạn số lượng yêu cầu. Vui lòng thử lại sau.";
+                default:
+                    return "Đã xảy ra lỗi khi xử lý yêu cầu. Vui lòng thử lại sau.";
             }
-            return "Đã xảy ra lỗi khi xử lý yêu cầu. Vui lòng thử lại sau.";
 
         } catch (HttpServerErrorException e) {
             log.error("❌ Gemini API Server Error (5xx): Status={}, Body={}",
