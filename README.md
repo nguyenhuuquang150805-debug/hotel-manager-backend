@@ -67,21 +67,32 @@ Hệ thống quản lý khách sạn hiện đại được xây dựng bằng R
 
 ## 📁 Cấu trúc dự án
 
-```
-hotel-management/
-├── myapp/                   # Frontend (React Native)
-│   ├── app/                 # Màn hình chính
-│   ├── components/          # Components tái sử dụng
-│   ├── contexts/           # State management
-│   └── services/           # API services
-│
-└── hotelmanagement/        # Backend (Spring Boot)
-    └── src/main/java/
-        ├── controller/     # REST Controllers
-        ├── service/       # Business logic
-        ├── repository/    # Database repositories
-        └── entity/        # JPA entities
-```
+### Backend Structure (Spring Boot)
+hotelmanagement/
+└── src/main/java/com/nguyenhuuquang/hotelmanagement/
+    ├── entity/                 # JPA Entities & Enums
+    │   └── enums/             # RoomStatus, TransactionType, UserStatus
+    ├── repository/            # Data Access Layer
+    ├── service/               # Business Logic
+    │   └── impl/             # Service Implementations
+    ├── controller/            # REST API Controllers
+    ├── config/                # Configuration Classes
+    ├── dto/                   # Data Transfer Objects
+    └── exception/             # Custom Exceptions
+
+
+### Frontend Structure (React Native)
+
+myapp/
+├── app/                       # Screens
+│   ├── (auth)/               # Authentication Screens
+│   └── (drawer)/             # Main App Screens
+├── components/                # Reusable Components
+├── constants/                 # App Constants
+├── contexts/                  # State Management (Context API)
+├── hooks/                     # Custom React Hooks
+├── services/                  # API Service Layer
+└── styles/                    # Stylesheets
 
 ## 🚀 Cài đặt và chạy
 
